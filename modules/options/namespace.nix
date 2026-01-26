@@ -1,0 +1,10 @@
+# nlib.namespace
+{ lib, config, ... }:
+{
+  options.nlib.namespace = lib.mkOption {
+    type = lib.types.str;
+    default = "lib";
+    description = "Namespace for this module system's libs";
+    example = "nixos";
+  };
+}

@@ -44,7 +44,7 @@ let
   allLibs = evaluatedPerLib.config.lib or { };
 in
 {
-  imports = [ ./options.nix ];
+  imports = [ ./options ];
 
   config = {
     nlib.namespace = lib.mkDefault namespace;
