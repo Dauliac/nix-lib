@@ -6,10 +6,6 @@
 #   - wrapLibModule: Wrapper for import-tree to inject mkLibOptionFromFileName
 #   - backends: Test backend adapters (nix-unit, nixt, nixtest, runTests)
 #   - coverage: Coverage calculation utilities
-#
-# Legacy (deprecated):
-#   - mkLib: Use mkLibOption instead
-#   - mkLibFromFile: Use mkLibOptionFromFileName instead
 { lib }:
 let
   mkLibOption = import ./mkLibOption.nix { inherit lib; };
@@ -30,8 +26,4 @@ in
   inherit mkLibOption mkLibOptionFromFileName wrapLibModule;
   backends = import ./backends.nix { inherit lib; };
   coverage = import ./coverage.nix { inherit lib; };
-
-  # Legacy aliases (deprecated)
-  mkLib = import ./mkLib.nix { inherit lib; };
-  mkLibFromFile = import ./mkLibFromFile.nix { inherit lib; };
 }

@@ -51,8 +51,6 @@ in
       # Expose nlib helpers for consumers
       flake.lib.nlib = {
         inherit (nlibLib) mkLibOption mkLibOptionFromFileName wrapLibModule;
-        # Legacy
-        inherit (nlibLib) mkLib mkLibFromFile;
       };
 
       # Expose tests in backend format
