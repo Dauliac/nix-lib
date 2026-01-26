@@ -15,6 +15,10 @@
 
   outputs =
     inputs@{ self, flake-parts, ... }:
+    let
+      lib = inputs.nixpkgs.lib;
+      nlibLib = import ./modules/lib { inherit lib; };
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -24,11 +28,20 @@
       ];
 
       flake = {
-        # Expose the flake module for consumers
+        # flake-parts module
         flakeModules.default = ./modules/flake;
 
+        # Convenience modules for common module systems
+        nixosModules.default = nlibLib.mkAdapter { name = "nixos"; };
+        homeModules.default = nlibLib.mkAdapter { name = "home-manager"; };
+        nixvimModules.default = nlibLib.mkAdapter { name = "nixvim"; };
+        darwinModules.default = nlibLib.mkAdapter { name = "nix-darwin"; };
+
+        # Generic adapter factory for any module system
+        mkAdapter = nlibLib.mkAdapter;
+
         # Expose lib for direct usage
-        lib.nlib = import ./modules/lib { lib = inputs.nixpkgs.lib; };
+        lib.nlib = nlibLib;
       };
 
       perSystem =
