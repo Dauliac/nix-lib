@@ -12,7 +12,6 @@ in
   imports = [
     ./namespace.nix
     ./perLib.nix
-    ./libs.nix
     ./testing.nix
     ./coverage.nix
   ];
@@ -35,9 +34,8 @@ in
             };
           };
 
-      # Merge libs from perLib evaluation and legacy libs option
-      perLibDefs = evaluatedPerLib.config.lib or { };
-      allLibs = cfg.libs // perLibDefs;
+      # Get libs from perLib evaluation
+      allLibs = evaluatedPerLib.config.lib or { };
 
       # Extract functions
       getMeta = def: def._nlib or def;
