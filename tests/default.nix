@@ -77,8 +77,8 @@ let
   allExamples = exampleAdd // exampleIdentity // exampleMyFunction;
 
   # Test mkLibOptionFromFileName with wrapLibModule
-  perLibAddModule = wrapLibModule ../examples/perLib/add.nix { };
-  perLibMultiplyModule = wrapLibModule ../examples/perLib/multiply.nix { };
+  perLibAddModule = wrapLibModule ../examples/add.nix { };
+  perLibMultiplyModule = wrapLibModule ../examples/multiply.nix { };
 in
 {
   # ===== mkLibOption tests =====

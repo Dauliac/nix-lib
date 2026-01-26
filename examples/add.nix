@@ -1,7 +1,7 @@
 # Example: using mkLibOptionFromFileName (name derived from filename)
 #
 # This file should be imported via wrapLibModule:
-#   import-tree.map nlib.wrapLibModule ./perLib
+#   import-tree.map nlib.wrapLibModule ./examples
 { lib, mkLibOptionFromFileName, ... }:
 {
   options.lib = mkLibOptionFromFileName {
