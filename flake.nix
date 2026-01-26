@@ -29,31 +29,28 @@
 
         # Expose lib for direct usage
         lib.nlib = import ./modules/lib { lib = inputs.nixpkgs.lib; };
-
-        # Expose tests for nix-unit
-        tests = import ./tests { pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; };
       };
 
       perSystem =
-        { pkgs, inputs', ... }:
+        { pkgs, system, ... }:
         {
           # Formatter
-          formatter = pkgs.nixfmt-rfc-style;
+          formatter = pkgs.nixfmt;
+
+          # Tests for nix-unit (attrset, not derivation)
+          # Run via: nix-unit --flake .#legacyPackages.<system>.tests
+          legacyPackages.tests = import ./tests { inherit pkgs; };
 
           # Development shell
           devShells.default = pkgs.mkShell {
             packages = [
-              inputs'.nix-unit.packages.default
-              pkgs.nixfmt-rfc-style
+              inputs.nix-unit.packages.${system}.default
+              pkgs.nixfmt
             ];
+            shellHook = ''
+              echo "Run tests: nix-unit --flake .#legacyPackages.${system}.tests"
+            '';
           };
-
-          # Run nlib's own tests
-          checks.nlib-tests = pkgs.runCommand "nlib-tests" { } ''
-            ${inputs'.nix-unit.packages.default}/bin/nix-unit \
-              --flake ${self}#tests
-            touch $out
-          '';
         };
     };
 }
