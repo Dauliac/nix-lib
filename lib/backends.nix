@@ -2,6 +2,10 @@
 #
 # Transforms canonical test format to framework-specific formats.
 # All adapters have signature: name -> tests -> backendFormat
+#
+# Libs can be either:
+#   - Legacy format: { name, tests, fn, ... }
+#   - New format: { _nlib = { name, tests, fn, ... }; ... }
 { lib }:
 let
   inherit (lib)
@@ -14,6 +18,9 @@ let
 
   # Sanitize test name for use as identifier
   sanitize = s: replaceStrings [ " " ":" "-" "'" "\"" ] [ "_" "_" "_" "_" "_" ] s;
+
+  # Extract nlib metadata from lib definition (supports both formats)
+  getMeta = def: def._nlib or def;
 
   # Backend adapters
   adapters = {
@@ -68,5 +75,11 @@ in
   # Convert all libs to selected backend format
   toBackend =
     backend: libs:
-    foldl' (acc: def: acc // adapters.${backend} def.name def.tests) { } (builtins.attrValues libs);
+    foldl' (
+      acc: def:
+      let
+        meta = getMeta def;
+      in
+      acc // adapters.${backend} meta.name meta.tests
+    ) { } (builtins.attrValues libs);
 }

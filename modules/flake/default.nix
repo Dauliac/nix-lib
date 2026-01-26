@@ -2,7 +2,7 @@
 #
 # Provides:
 #   - flake.lib.{namespace}: Library functions
-#   - flake.lib.nlib: mkLib helper
+#   - flake.lib.nlib: mkLibOption helpers
 #   - flake.tests.{namespace}: Tests in selected backend format
 { lib, ... }:
 let
@@ -15,10 +15,28 @@ in
     { config, ... }:
     let
       cfg = config.nlib;
-      allLibs = cfg.libs;
 
-      # Extract just the functions
-      libFns = lib.mapAttrs (_: d: d.fn) allLibs;
+      # Evaluate perLib modules to get lib options
+      evaluatedPerLib =
+        if cfg.perLib == [ ] then
+          { config.lib = { }; }
+        else
+          lib.evalModules {
+            modules = cfg.perLib;
+            specialArgs = {
+              inherit lib;
+              inherit (nlibLib) mkLibOption;
+              # Note: mkLibOptionFromFileName requires path context from wrapLibModule
+            };
+          };
+
+      # Merge libs from perLib evaluation and legacy libs option
+      perLibDefs = evaluatedPerLib.config.lib or { };
+      allLibs = cfg.libs // perLibDefs;
+
+      # Extract functions (handle both legacy and new format)
+      getMeta = def: def._nlib or def;
+      libFns = lib.mapAttrs (_: d: (getMeta d).fn or d.fn or d) allLibs;
 
       # Transform tests to selected backend format
       tests = nlibLib.backends.toBackend cfg.testing.backend allLibs;
@@ -32,7 +50,9 @@ in
 
       # Expose nlib helpers for consumers
       flake.lib.nlib = {
-        inherit (nlibLib) mkLib;
+        inherit (nlibLib) mkLibOption mkLibOptionFromFileName wrapLibModule;
+        # Legacy
+        inherit (nlibLib) mkLib mkLibFromFile;
       };
 
       # Expose tests in backend format
