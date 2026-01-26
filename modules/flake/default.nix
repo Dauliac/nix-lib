@@ -6,10 +6,16 @@
 #   - flake.tests.{namespace}: Tests in selected backend format
 { lib, ... }:
 let
-  nlibLib = import ../../lib { inherit lib; };
+  nlibLib = import ../lib { inherit lib; };
 in
 {
-  imports = [ ./options.nix ];
+  imports = [
+    ./namespace.nix
+    ./perLib.nix
+    ./libs.nix
+    ./testing.nix
+    ./coverage.nix
+  ];
 
   config =
     { config, ... }:
@@ -26,7 +32,6 @@ in
             specialArgs = {
               inherit lib;
               inherit (nlibLib) mkLibOption;
-              # Note: mkLibOptionFromFileName requires path context from wrapLibModule
             };
           };
 
@@ -34,7 +39,7 @@ in
       perLibDefs = evaluatedPerLib.config.lib or { };
       allLibs = cfg.libs // perLibDefs;
 
-      # Extract functions (handle both legacy and new format)
+      # Extract functions
       getMeta = def: def._nlib or def;
       libFns = lib.mapAttrs (_: d: (getMeta d).fn or d.fn or d) allLibs;
 
@@ -42,7 +47,7 @@ in
       tests = nlibLib.backends.toBackend cfg.testing.backend allLibs;
 
       # Calculate coverage
-      coverage = nlibLib.coverage.calculate allLibs;
+      coverageResult = nlibLib.coverage.calculate allLibs;
     in
     {
       # Expose library functions
@@ -58,29 +63,8 @@ in
 
       # Coverage enforcement
       assertions = lib.optional (cfg.coverage.threshold > 0) {
-        assertion = coverage.percent >= cfg.coverage.threshold;
-        message = "nlib: test coverage ${toString coverage.percent}% is below threshold ${toString cfg.coverage.threshold}%";
-      };
-    };
-
-  # Per-system configuration for checks
-  perSystem =
-    {
-      pkgs,
-      inputs',
-      config,
-      ...
-    }:
-    let
-      cfg = config.nlib or { };
-      backend = cfg.testing.backend or "nix-unit";
-    in
-    {
-      checks = lib.optionalAttrs (backend == "nix-unit" && (cfg.libs or { }) != { }) {
-        nlib-tests = pkgs.runCommand "nlib-tests" { } ''
-          ${inputs'.nix-unit.packages.default}/bin/nix-unit --flake .#tests
-          touch $out
-        '';
+        assertion = coverageResult.percent >= cfg.coverage.threshold;
+        message = "nlib: test coverage ${toString coverageResult.percent}% is below threshold ${toString cfg.coverage.threshold}%";
       };
     };
 }

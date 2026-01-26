@@ -6,7 +6,7 @@
 }:
 let
   lib = pkgs.lib;
-  nlib = import ../lib { inherit lib; };
+  nlib = import ../modules/lib { inherit lib; };
   inherit (nlib)
     mkLibOption
     mkLibOptionFromFileName

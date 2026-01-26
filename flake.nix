@@ -28,7 +28,7 @@
         flakeModules.default = ./modules/flake;
 
         # Expose lib for direct usage
-        lib.nlib = import ./lib { lib = inputs.nixpkgs.lib; };
+        lib.nlib = import ./modules/lib { lib = inputs.nixpkgs.lib; };
 
         # Expose tests for nix-unit
         tests = import ./tests { pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; };
