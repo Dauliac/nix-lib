@@ -28,7 +28,6 @@ let
           b = 3;
         };
         expected = 5;
-        fn = args: args.a + args.b;
       };
       "with zero" = {
         args = {
@@ -36,7 +35,6 @@ let
           b = 0;
         };
         expected = 5;
-        fn = args: args.a + args.b;
       };
     };
   };
@@ -52,7 +50,6 @@ let
           x = 42;
         };
         expected = 42;
-        fn = args: args.x;
       };
     };
   };
@@ -68,7 +65,6 @@ let
           x = 5;
         };
         expected = 10;
-        fn = args: args.x * 2;
       };
     };
   };
@@ -144,13 +140,19 @@ in
 
   test_backend_nix_unit_sanitizes_names = {
     expr = builtins.hasAttr "test_my_function_test_case" (
-      backends.adapters.nix-unit exampleMyFunction."my-function"._nlib.name exampleMyFunction."my-function"._nlib.tests
+      backends.adapters.nix-unit
+        exampleMyFunction."my-function"._nlib.name
+        exampleMyFunction."my-function"._nlib.fn
+        exampleMyFunction."my-function"._nlib.tests
     );
     expected = true;
   };
 
   test_backend_nix_unit_generates_test = {
-    expr = (backends.adapters.nix-unit "add" exampleAdd.add._nlib.tests).test_add_basic_addition.expected;
+    expr =
+      (backends.adapters.nix-unit "add" exampleAdd.add._nlib.fn exampleAdd.add._nlib.tests)
+        .test_add_basic_addition
+        .expected;
     expected = 5;
   };
 

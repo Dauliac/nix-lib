@@ -13,7 +13,6 @@
           b = 4;
         };
         expected = 12;
-        fn = args: args.a * args.b;
       };
       "with zero" = {
         args = {
@@ -21,7 +20,6 @@
           b = 0;
         };
         expected = 0;
-        fn = args: args.a * args.b;
       };
     };
   };

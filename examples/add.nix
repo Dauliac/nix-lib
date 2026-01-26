@@ -16,7 +16,6 @@
           b = 3;
         };
         expected = 5;
-        fn = args: args.a + args.b;
       };
       "with zero" = {
         args = {
@@ -24,7 +23,6 @@
           b = 0;
         };
         expected = 5;
-        fn = args: args.a + args.b;
       };
       "negative numbers" = {
         args = {
@@ -32,7 +30,6 @@
           b = 7;
         };
         expected = 4;
-        fn = args: args.a + args.b;
       };
     };
   };

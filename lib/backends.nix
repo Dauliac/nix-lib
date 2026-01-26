@@ -1,11 +1,10 @@
 # Test backend adapters
 #
 # Transforms canonical test format to framework-specific formats.
-# All adapters have signature: name -> tests -> backendFormat
+# All adapters have signature: name -> fn -> tests -> backendFormat
 #
-# Libs can be either:
-#   - Legacy format: { name, tests, fn, ... }
-#   - New format: { _nlib = { name, tests, fn, ... }; ... }
+# Test cases only need: { args, expected }
+# The fn comes from the lib definition, not each test case.
 { lib }:
 let
   inherit (lib)
@@ -19,51 +18,64 @@ let
   # Sanitize test name for use as identifier
   sanitize = s: replaceStrings [ " " ":" "-" "'" "\"" ] [ "_" "_" "_" "_" "_" ] s;
 
-  # Extract nlib metadata from lib definition (supports both formats)
+  # Extract nlib metadata from lib definition
   getMeta = def: def._nlib or def;
 
-  # Backend adapters
+  # Apply function to args (handles both curried and attrset args)
+  applyFn =
+    fn: args:
+    if builtins.isAttrs args then
+      let
+        argNames = builtins.attrNames args;
+      in
+      builtins.foldl' (f: name: f args.${name}) fn argNames
+    else
+      fn args;
+
+  # Backend adapters: name -> fn -> tests -> backendFormat
   adapters = {
     # nix-unit: { testName = { expr, expected } }
     nix-unit =
-      name: tests:
+      name: fn: tests:
       mapAttrs' (
         desc: t:
         nameValuePair "test_${sanitize name}_${sanitize desc}" {
-          expr = t.fn t.args;
+          expr = applyFn fn t.args;
           expected = t.expected;
         }
       ) tests;
 
     # nixt: describe/it blocks
-    nixt = name: tests: {
-      block = [
-        {
-          describe = name;
-          tests = mapAttrsToList (desc: t: {
-            it = desc;
-            expr = (t.fn t.args) == t.expected;
-          }) tests;
-        }
-      ];
-    };
+    nixt =
+      name: fn: tests:
+      {
+        block = [
+          {
+            describe = name;
+            tests = mapAttrsToList (desc: t: {
+              it = desc;
+              expr = (applyFn fn t.args) == t.expected;
+            }) tests;
+          }
+        ];
+      };
 
     # nixtest (Jetify): [{ name, actual, expected }]
     nixtest =
-      name: tests:
+      name: fn: tests:
       mapAttrsToList (desc: t: {
         name = "${name}: ${desc}";
-        actual = t.fn t.args;
+        actual = applyFn fn t.args;
         expected = t.expected;
       }) tests;
 
     # lib.debug.runTests: { testName = { expr, expected } }
     runTests =
-      name: tests:
+      name: fn: tests:
       mapAttrs' (
         desc: t:
         nameValuePair "${sanitize name}_${sanitize desc}" {
-          expr = t.fn t.args;
+          expr = applyFn fn t.args;
           expected = t.expected;
         }
       ) tests;
@@ -80,6 +92,6 @@ in
       let
         meta = getMeta def;
       in
-      acc // adapters.${backend} meta.name meta.tests
+      acc // adapters.${backend} meta.name meta.fn meta.tests
     ) { } (builtins.attrValues libs);
 }
