@@ -12,13 +12,14 @@ let
     mapAttrsToList
     concatStringsSep
     optionalAttrs
+    optionalString
     ;
   pretty = generators.toPretty { };
 
   # Generate example from tests as assertions
-  mkExample =
+  mkTestsExample =
     name: tests:
-    literalMD ''
+    ''
       ```nix
       ${concatStringsSep "\n" (
         mapAttrsToList (
@@ -28,6 +29,17 @@ let
       )}
       ```
     '';
+
+  # Merge user example with auto-generated tests example
+  mkExample =
+    name: tests: userExample:
+    literalMD (
+      optionalString (userExample != null) ''
+        ${userExample}
+
+      ''
+      + mkTestsExample name tests
+    );
 
   # Validation: type must be explicit (not lib.types.raw)
   requireExplicitType =
@@ -60,7 +72,7 @@ let
       inherit description;
       default = fn;
       visible = args.visible or true;
-      example = args.example or mkExample name validTests;
+      example = mkExample name validTests (args.example or null);
     }
     // optionalAttrs (args ? defaultText) { inherit (args) defaultText; };
 in
