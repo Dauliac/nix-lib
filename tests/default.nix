@@ -8,13 +8,18 @@
 let
   lib = pkgs.lib;
   nlib = import ../lib { inherit lib; };
-  inherit (nlib) mkLib backends coverage;
+  inherit (nlib) mkLib mkLibFromFile backends coverage;
 
-  # Load example files
+  # Load example files (using mkLib directly)
   examples = {
     add = import ../examples/add.nix { inherit lib mkLib; };
     identity = import ../examples/identity.nix { inherit lib mkLib; };
     myFunction = import ../examples/my-function.nix { inherit lib mkLib; };
+  };
+
+  # Load example using mkLibFromFile (name derived from filename)
+  examplesFromFile = {
+    double = mkLibFromFile ../examples/double.nix { };
   };
 in
 {
@@ -72,5 +77,23 @@ in
   test_coverage_multiple_libs = {
     expr = (coverage.calculate examples).total;
     expected = 3;
+  };
+
+  # Test mkLibFromFile derives name from filename
+  test_mkLibFromFile_derives_name = {
+    expr = examplesFromFile.double.name;
+    expected = "double";
+  };
+
+  # Test mkLibFromFile function works correctly
+  test_mkLibFromFile_function_works = {
+    expr = examplesFromFile.double.fn 7;
+    expected = 14;
+  };
+
+  # Test mkLibFromFile includes tests
+  test_mkLibFromFile_includes_tests = {
+    expr = builtins.hasAttr "doubles positive" examplesFromFile.double.tests;
+    expected = true;
   };
 }
