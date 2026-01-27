@@ -14,4 +14,11 @@
     internal = true;
     description = "Lib metadata for test extraction (internal, set by adapter)";
   };
+
+  options.nlib._flakeLibsMeta = lib.mkOption {
+    type = lib.types.lazyAttrsOf lib.types.unspecified;
+    default = { };
+    internal = true;
+    description = "Flake-level lib metadata (internal, set by flake module)";
+  };
 }
