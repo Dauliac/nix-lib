@@ -7,6 +7,13 @@
     description = "Functions to collect libs from other sources (nixos, home-manager, etc).";
   };
 
+  options.nlib.metaCollectors = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.functionTo (lib.types.lazyAttrsOf lib.types.unspecified));
+    default = { };
+    internal = true;
+    description = "Functions to collect lib metadata from other sources.";
+  };
+
   config.nlib.collectors = {
     nixos =
       cfg:
@@ -17,6 +24,20 @@
     home =
       cfg:
       lib.foldl' (acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._libs or { }))
+        { }
+        (lib.attrNames (cfg.flake.homeConfigurations or { }));
+  };
+
+  config.nlib.metaCollectors = {
+    nixos =
+      cfg:
+      lib.foldl' (acc: name: acc // (cfg.flake.nixosConfigurations.${name}.config.nlib._libsMeta or { }))
+        { }
+        (lib.attrNames (cfg.flake.nixosConfigurations or { }));
+
+    home =
+      cfg:
+      lib.foldl' (acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._libsMeta or { }))
         { }
         (lib.attrNames (cfg.flake.homeConfigurations or { }));
   };

@@ -5,6 +5,6 @@
     type = lib.types.str;
     default = "lib";
     description = "Namespace for this module system's libs";
-    example = "nixos";
+    example = "mymodule.lib";
   };
 }

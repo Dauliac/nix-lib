@@ -4,9 +4,18 @@
 #   imports = [ (nlib.mkAdapter { name = "nixos"; }) ];
 #   imports = [ (nlib.mkAdapter { name = "home-manager"; }) ];
 #   imports = [ (nlib.mkAdapter { name = "nixvim"; }) ];
+#
+# In NixOS/home-manager modules:
+#   config.lib.myFunc = {
+#     type = lib.types.functionTo lib.types.int;
+#     fn = x: x * 2;
+#     description = "Double a number";
+#     tests."doubles 5" = { args.x = 5; expected = 10; };
+#   };
 { lib }:
 let
   nlibLib = import ./lib { inherit lib; };
+  libDefType = import ./lib/libDefType.nix { inherit lib; };
 
   namespaces = {
     nixos = "nixos";
@@ -29,25 +38,54 @@ in
 let
   cfg = config.nlib;
 
-  evaluatedPerLib =
-    if !cfg.enable || cfg.perLib == [ ] then
-      { config.lib = { }; }
-    else
-      lib.evalModules {
-        modules = cfg.perLib;
-        specialArgs = {
-          inherit lib;
-          inherit (nlibLib) mkLibOption;
-        };
-      };
+  # Convert lib definitions to metadata format
+  libDefsToMeta =
+    defs:
+    lib.mapAttrs (
+      attrName: def: {
+        name = attrName;
+        inherit (def) fn description type;
+        tests = lib.mapAttrs (_: t: {
+          args = t.args;
+          expected = t.expected;
+          assertions = t.assertions;
+        }) def.tests;
+      }
+    ) defs;
 
-  allLibs = evaluatedPerLib.config.lib or { };
+  # Extract plain functions
+  extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
+
+  # Get lib definitions from config.lib
+  libDefs = config.lib or { };
+  allMeta = if cfg.enable then libDefsToMeta libDefs else { };
+  allLibs = if cfg.enable then extractFns libDefs else { };
 in
 {
   imports = [ ./options ];
 
+  # Define options.lib for this module system
+  options.lib = lib.mkOption {
+    type = lib.types.attrsOf libDefType;
+    default = { };
+    description = ''
+      Lib definitions for ${name}.
+
+      Usage:
+      ```nix
+      config.lib.myFunc = {
+        type = lib.types.functionTo lib.types.int;
+        fn = x: x * 2;
+        description = "Double a number";
+        tests."doubles 5" = { args.x = 5; expected = 10; };
+      };
+      ```
+    '';
+  };
+
   config = {
     nlib.namespace = lib.mkDefault namespace;
     nlib._libs = allLibs;
+    nlib._libsMeta = allMeta;
   };
 }
