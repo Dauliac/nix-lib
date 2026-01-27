@@ -36,14 +36,7 @@
 
       # perSystem follows flake-parts conventions
       perSystem =
-        {
-          lib,
-          system,
-          config,
-          _nlibPerSystem,
-          _nlibMkTestRunner,
-          ...
-        }:
+        { lib, system, ... }:
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
@@ -52,6 +45,7 @@
           _module.args.pkgs = pkgs;
 
           # Per-system libs (depend on pkgs) - direct config.lib.<name> API
+          # Auto-exposed at legacyPackages.${system}.nlib.<name>
           lib.writeGreeting = {
             type = lib.types.functionTo lib.types.package;
             fn = name: pkgs.writeText "greeting-${name}" "Hello, ${name}!";
@@ -62,20 +56,11 @@
             };
           };
 
-          # Expose perSystem libs
-          legacyPackages._nlib = _nlibPerSystem;
-
-          # Test runner with JUnit support
-          packages.nlib-test = _nlibMkTestRunner nix-unit.packages.${system}.default;
-
           # Development shell with nix-unit
           devShells.default = pkgs.mkShell {
-            packages = [
-              nix-unit.packages.${system}.default
-            ];
+            packages = [ nix-unit.packages.${system}.default ];
             shellHook = ''
               echo "Run tests: nix-unit --flake .#tests.lib"
-              echo "Or use: nix run .#nlib-test"
             '';
           };
         };
