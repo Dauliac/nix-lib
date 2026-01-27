@@ -179,5 +179,5 @@ This makes it:
 
 ## See Also
 
-- `examples/integration/` - Complete example with flake-parts, NixOS, and per-system libs
+- `tests/integration/` - Complete example with flake-parts, NixOS, and per-system libs
 - `tests/` - nlib's own tests using the pattern
