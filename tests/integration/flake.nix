@@ -41,9 +41,6 @@
           pkgs = nixpkgs.legacyPackages.${system};
         in
         {
-          # Provide pkgs for flake-parts
-          _module.args.pkgs = pkgs;
-
           # Per-system libs (depend on pkgs) - direct config.lib.<name> API
           # Auto-exposed at legacyPackages.${system}.nlib.<name>
           lib.writeGreeting = {
