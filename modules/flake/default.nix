@@ -106,7 +106,6 @@ in
     # - flake.lib.<name> for pure flake libs
     # - flake.lib.nixos.<name> for nixos libs
     # - flake.lib.home.<name> for home-manager libs
-    # - flake.lib.nlib.* for utilities
     flake.lib =
       flakeLibs
       // {
@@ -115,12 +114,7 @@ in
         darwin = extractFns (config.lib.darwin or { });
         vim = extractFns (config.lib.vim or { });
       }
-      // collectedLibsByNamespace
-      // {
-        nlib = {
-          inherit (nlibLib) mkLibOption mkLibOptionFromFileName wrapLibModule mkAdapter;
-        };
-      };
+      // collectedLibsByNamespace;
 
     flake.tests.${cfg.namespace} = tests;
 
