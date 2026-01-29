@@ -14,8 +14,12 @@
 { lib, config, ... }:
 let
   nlibLib = import ../_lib { inherit lib; };
-  libDefType = import ../_lib/libDefType.nix { inherit lib; };
+  libDefTypeModule = import ../_lib/libDefType.nix { inherit lib; };
+  inherit (libDefTypeModule) flattenLibs unflattenFns;
   cfg = config.nlib;
+
+  # Flatten nested lib definitions (nlib.lib.treefmt.check -> "treefmt.check")
+  flatLibDefs = flattenLibs "" (cfg.lib or { });
 
   # Convert lib definitions to metadata format for backends
   # Uses resolved functions from config.lib so overrides are tested
@@ -24,29 +28,39 @@ let
     lib.mapAttrs (name: def: {
       inherit name;
       # Use resolved function from config.lib, fallback to def.fn for private libs
-      fn = resolvedFns.${name} or def.fn;
-      inherit (def) description type;
+      # For nested names like "treefmt.check", traverse the resolved structure
+      fn =
+        let
+          path = lib.splitString "." name;
+          resolved = lib.attrByPath path null resolvedFns;
+        in
+        if resolved != null then resolved else def.fn;
+      description = def.description or "";
+      type = def.type or null;
       tests = lib.mapAttrs (_: t: {
-        inherit (t) args;
-        inherit (t) expected;
-        inherit (t) assertions;
-      }) def.tests;
+        args = t.args or { };
+        expected = t.expected or null;
+        assertions = t.assertions or [ ];
+      }) (def.tests or { });
     }) defs;
 
   # Extract plain functions from lib definitions (only visible/public ones)
-  extractFns = defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible) defs);
+  # Returns flat attrset with dotted names
+  # Default visible to true if not specified
+  extractFnsFlat =
+    defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible or true) defs);
 
-  # Flake-level libs from nlib.lib
-  flakeLibDefs = cfg.lib or { };
-  flakeLibs = extractFns flakeLibDefs;
+  # Flake-level libs - flatten, extract, then unflatten for nested output
+  flakeLibsFlatFns = extractFnsFlat flatLibDefs;
+  flakeLibs = unflattenFns flakeLibsFlatFns;
   # Use config.lib.flake for resolved functions (includes overrides)
-  flakeLibsMeta = libDefsToMeta flakeLibDefs config.lib.flake;
+  flakeLibsMeta = libDefsToMeta flatLibDefs config.lib.flake;
 
   # Collected libs from other module systems (nixos, home, etc.)
   collectedMeta = lib.mapAttrs (_: collector: collector config) (cfg.metaCollectors or { });
-  collectedLibsByNamespace = lib.mapAttrs (_: extractFns) (
-    lib.mapAttrs (_: meta: lib.mapAttrs (_: m: { inherit (m) fn; }) meta) collectedMeta
-  );
+  # Extract fns from collected metadata (already flat, just need fn extraction)
+  extractCollectedFns = meta: lib.mapAttrs (_: m: m.fn) meta;
+  collectedLibsByNamespace = lib.mapAttrs (_: extractCollectedFns) collectedMeta;
 
   # For tests, flatten all metadata
   allMetaFlat =
@@ -60,23 +74,34 @@ in
   ];
 
   # Define options.nlib.lib for flake-level lib definitions
+  # Supports nested namespaces: nlib.lib.treefmt.check = {...}
   options.nlib.lib = lib.mkOption {
-    type = lib.types.attrsOf libDefType;
+    type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
     description = ''
       Pure flake-level lib definitions (no pkgs dependency).
+      Supports nested namespaces.
 
       Usage:
       ```nix
+      # Flat
       nlib.lib.double = {
         type = lib.types.functionTo lib.types.int;
         fn = x: x * 2;
         description = "Double a number";
         tests."doubles 5" = { args.x = 5; expected = 10; };
       };
+
+      # Nested namespace
+      nlib.lib.treefmt.check = {
+        type = lib.types.functionTo lib.types.bool;
+        fn = x: x == "formatted";
+        description = "Check if formatted";
+        tests."is formatted" = { args.x = "formatted"; expected = true; };
+      };
       ```
 
-      The plain functions are auto-populated to lib.flake.<name>
+      Functions are available at lib.flake.<path> (e.g., lib.flake.treefmt.check)
     '';
   };
 

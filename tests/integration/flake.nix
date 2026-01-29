@@ -34,6 +34,28 @@
         };
       };
 
+      # Nested namespace example: nlib.lib.math.square
+      # Available at lib.flake.math.square
+      nlib.lib.math.square = {
+        type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.int;
+        fn = x: x * x;
+        description = "Square a number";
+        tests."squares 4" = {
+          args.x = 4;
+          expected = 16;
+        };
+      };
+
+      nlib.lib.math.cube = {
+        type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.int;
+        fn = x: x * x * x;
+        description = "Cube a number";
+        tests."cubes 3" = {
+          args.x = 3;
+          expected = 27;
+        };
+      };
+
       # perSystem follows flake-parts conventions
       perSystem =
         { lib, system, ... }:

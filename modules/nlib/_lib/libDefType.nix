@@ -1,24 +1,15 @@
-# libDefType - Option type for lib definitions
+# libDefType - Option type for lib definitions with nested namespace support
 #
-# Usage:
-#   options.lib = lib.mkOption {
-#     type = lib.types.attrsOf libDefType;
-#   };
+# Supports both flat and nested definitions:
+#   nlib.lib.double = { fn = ...; };           # flat
+#   nlib.lib.treefmt.check = { fn = ...; };    # nested
 #
-#   config.lib.double = {
-#     type = lib.types.functionTo lib.types.int;
-#     fn = x: x * 2;
-#     description = "Double the input";
-#     tests."doubles 5" = { args.x = 5; expected = 10; };
-#   };
 { lib }:
 let
   inherit (lib)
     mkOption
     types
     ;
-
-  # Check if test uses assertions format
 
   # Test case submodule
   testCaseType = types.submodule {
@@ -100,7 +91,7 @@ let
         visible = mkOption {
           type = types.bool;
           default = true;
-          description = "Whether to show in documentation";
+          description = "Whether to show in documentation and export to config.lib";
         };
 
         # Internal: the name is inferred from the attribute name
@@ -113,5 +104,49 @@ let
       };
     }
   );
+
+  # Check if a value looks like a lib definition (has fn attribute)
+  isLibDef = v: builtins.isAttrs v && v ? fn;
+
+  # Flatten nested lib definitions to a flat attrset with dotted names
+  # e.g., { treefmt.check = {...}; double = {...}; }
+  #    -> { "treefmt.check" = {...}; double = {...}; }
+  flattenLibs =
+    prefix: attrs:
+    lib.foldl' (
+      acc: name:
+      let
+        value = attrs.${name};
+        fullName = if prefix == "" then name else "${prefix}.${name}";
+      in
+      if isLibDef value then
+        acc // { ${fullName} = value; }
+      else if builtins.isAttrs value then
+        acc // (flattenLibs fullName value)
+      else
+        acc
+    ) { } (builtins.attrNames attrs);
+
+  # Unflatten dotted names back to nested structure for config.lib output
+  # e.g., { "treefmt.check" = fn; double = fn; }
+  #    -> { treefmt.check = fn; double = fn; }
+  unflattenFns =
+    flatFns:
+    lib.foldl' (
+      acc: name:
+      let
+        value = flatFns.${name};
+        path = lib.splitString "." name;
+      in
+      lib.recursiveUpdate acc (lib.setAttrByPath path value)
+    ) { } (builtins.attrNames flatFns);
 in
-libDefType
+{
+  inherit
+    libDefType
+    testCaseType
+    isLibDef
+    flattenLibs
+    unflattenFns
+    ;
+}

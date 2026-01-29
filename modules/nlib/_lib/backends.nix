@@ -55,8 +55,8 @@ let
   # Force evaluation of a lazy value
   force = v: if v ? __lazy && v.__lazy then v.__thunk else v;
 
-  # Check if test uses assertions format
-  hasAssertions = t: hasAttr "assertions" t && isList t.assertions;
+  # Check if test uses assertions format (must be non-empty list)
+  hasAssertions = t: hasAttr "assertions" t && isList t.assertions && t.assertions != [ ];
 
   # Expand a single test into multiple tests (one per assertion)
   # Returns: [{ testName, testSpec }]

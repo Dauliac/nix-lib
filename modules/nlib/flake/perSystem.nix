@@ -15,26 +15,33 @@
 #
 { lib, ... }:
 let
-  libDefType = import ../_lib/libDefType.nix { inherit lib; };
+  libDefTypeModule = import ../_lib/libDefType.nix { inherit lib; };
+  inherit (libDefTypeModule) flattenLibs unflattenFns;
 in
 {
   perSystem =
     { lib, config, ... }:
     let
-      # Extract plain functions (only visible/public ones)
-      extractFns = defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible) defs);
+      # Flatten nested lib definitions
+      flatLibDefs = flattenLibs "" (config.nlib.lib or { });
 
-      # Get lib definitions from nlib.lib
-      perSystemLibDefs = config.nlib.lib or { };
-      perSystemFns = extractFns perSystemLibDefs;
+      # Extract plain functions (only visible/public ones)
+      # Default visible to true if not specified
+      extractFnsFlat =
+        defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible or true) defs);
+
+      # Get lib definitions, flatten, extract, unflatten
+      perSystemFns = unflattenFns (extractFnsFlat flatLibDefs);
     in
     {
       # Define options.nlib.lib for per-system lib definitions
+      # Supports nested namespaces
       options.nlib.lib = lib.mkOption {
-        type = lib.types.attrsOf libDefType;
+        type = lib.types.lazyAttrsOf lib.types.unspecified;
         default = { };
         description = ''
           Per-system lib definitions. Use for libs that depend on pkgs.
+          Supports nested namespaces.
 
           Usage:
           ```nix
@@ -45,10 +52,17 @@ in
               description = "Write a greeting file";
               tests."greets Alice" = { args.name = "Alice"; expected = "greeting-Alice"; };
             };
+
+            # Nested namespace
+            nlib.lib.scripts.hello = {
+              type = lib.types.functionTo lib.types.package;
+              fn = msg: pkgs.writeShellScriptBin "hello" "echo ''${msg}";
+              description = "Create hello script";
+            };
           };
           ```
 
-          The plain functions are auto-populated to lib.<name>
+          Functions are available at lib.<path> (e.g., lib.scripts.hello)
         '';
       };
 

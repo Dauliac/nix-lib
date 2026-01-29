@@ -17,7 +17,8 @@
 #
 { lib }:
 let
-  libDefType = import ./libDefType.nix { inherit lib; };
+  libDefTypeModule = import ./libDefType.nix { inherit lib; };
+  inherit (libDefTypeModule) flattenLibs unflattenFns;
 
   namespaces = {
     nixos = "nixos";
@@ -40,6 +41,9 @@ in
 let
   cfg = config.nlib;
 
+  # Flatten nested lib definitions
+  flatLibDefs = flattenLibs "" (cfg.lib or { });
+
   # Convert lib definitions to metadata format
   # Uses resolved functions from config.lib so overrides are tested
   libDefsToMeta =
@@ -47,33 +51,41 @@ let
     lib.mapAttrs (attrName: def: {
       name = attrName;
       # Use resolved function from config.lib, fallback to def.fn for private libs
-      fn = resolvedFns.${attrName} or def.fn;
-      inherit (def) description type;
+      fn =
+        let
+          path = lib.splitString "." attrName;
+          resolved = lib.attrByPath path null resolvedFns;
+        in
+        if resolved != null then resolved else def.fn;
+      description = def.description or "";
+      type = def.type or null;
       tests = lib.mapAttrs (_: t: {
-        inherit (t) args;
-        inherit (t) expected;
-        inherit (t) assertions;
-      }) def.tests;
+        args = t.args or { };
+        expected = t.expected or null;
+        assertions = t.assertions or [ ];
+      }) (def.tests or { });
     }) defs;
 
   # Extract plain functions (only visible/public ones)
-  extractFns = defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible) defs);
+  # Default visible to true if not specified
+  extractFnsFlat =
+    defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible or true) defs);
 
-  # Get lib definitions from nlib.lib
-  libDefs = cfg.lib or { };
-  allLibs = if cfg.enable then extractFns libDefs else { };
+  # Get lib definitions, flatten, extract, unflatten
+  allLibs = if cfg.enable then unflattenFns (extractFnsFlat flatLibDefs) else { };
   # Use config.lib for resolved functions (includes overrides)
-  allMeta = if cfg.enable then libDefsToMeta libDefs config.lib else { };
+  allMeta = if cfg.enable then libDefsToMeta flatLibDefs config.lib else { };
 in
 {
   imports = [ ../_all.nix ];
 
   # Define options.nlib.lib for lib definitions
+  # Supports nested namespaces
   options.nlib.lib = lib.mkOption {
-    type = lib.types.attrsOf libDefType;
+    type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
     description = ''
-      Lib definitions for ${name}.
+      Lib definitions for ${name}. Supports nested namespaces.
 
       Usage:
       ```nix
@@ -83,9 +95,16 @@ in
         description = "Double a number";
         tests."doubles 5" = { args.x = 5; expected = 10; };
       };
+
+      # Nested namespace
+      nlib.lib.utils.helper = {
+        type = lib.types.functionTo lib.types.str;
+        fn = x: "helper: " + x;
+        description = "Helper function";
+      };
       ```
 
-      The plain functions are auto-populated to config.lib.<name>
+      Functions are available at config.lib.<path>
     '';
   };
 
