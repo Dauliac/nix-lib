@@ -23,8 +23,8 @@
       };
 
       # Flake-level libs (pure, no pkgs dependency)
-      # Direct config.lib.flake.<name> API
-      lib.flake.double = {
+      # Define at nlib.lib.<name>, output at lib.flake.<name>
+      nlib.lib.double = {
         type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.int;
         fn = x: x * 2;
         description = "Double a number";
@@ -41,9 +41,9 @@
           pkgs = nixpkgs.legacyPackages.${system};
         in
         {
-          # Per-system libs (depend on pkgs) - direct config.lib.<name> API
-          # Auto-exposed at legacyPackages.${system}.nlib.<name>
-          lib.writeGreeting = {
+          # Per-system libs (depend on pkgs)
+          # Define at nlib.lib.<name>, output at lib.<name>
+          nlib.lib.writeGreeting = {
             type = lib.types.functionTo lib.types.package;
             fn = name: pkgs.writeText "greeting-${name}" "Hello, ${name}!";
             description = "Write a greeting file for a person";
@@ -69,8 +69,8 @@
           {
             nlib.enable = true;
 
-            # NixOS libs - direct config.lib.<name> API
-            lib.triple = {
+            # NixOS libs - define at nlib.lib.<name>, output at lib.<name>
+            nlib.lib.triple = {
               type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.int;
               fn = x: x * 3;
               description = "Triple a number";

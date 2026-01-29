@@ -1,22 +1,24 @@
 # Example: Defining libs in nix-darwin module
 #
-# These are collected and available at: flake.lib.darwin.<name>
+# Define at: nlib.lib.<name>
+# Use at: config.lib.<name> (within darwin config)
+# Output at: flake.lib.darwin.<name> (collected at flake-parts level)
 #
 # Usage in darwinConfigurations:
 #   modules = [
 #     nlib.darwinModules.default
 #     {
 #       nlib.enable = true;
-#       lib.myHelper = { ... };
+#       nlib.lib.myHelper = { ... };
 #     }
 #   ];
 #
-{ lib, ... }:
+{ lib, config, ... }:
 {
   nlib.enable = true;
 
   # Nix-darwin specific lib functions
-  lib.mkBrewPackage = {
+  nlib.lib.mkBrewPackage = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       homebrew.brews = [ name ];
@@ -30,7 +32,7 @@
     };
   };
 
-  lib.mkBrewCask = {
+  nlib.lib.mkBrewCask = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       homebrew.casks = [ name ];
@@ -44,7 +46,7 @@
     };
   };
 
-  lib.setDefault = {
+  nlib.lib.setDefault = {
     type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.attrs));
     fn = domain: key: value: {
       system.defaults.${domain}.${key} = value;
@@ -61,4 +63,24 @@
       };
     };
   };
+
+  # ============================================================
+  # Usage: Real configs using the libs (for e2e testing)
+  # ============================================================
+
+  imports = [
+    # Use lib to add homebrew packages
+    (config.lib.mkBrewPackage "curl")
+    (config.lib.mkBrewPackage "jq")
+    (config.lib.mkBrewPackage "ripgrep")
+
+    # Use lib to add homebrew casks
+    (config.lib.mkBrewCask "iterm2")
+    (config.lib.mkBrewCask "visual-studio-code")
+
+    # Use lib to set macOS defaults
+    (config.lib.setDefault "dock" "autohide" true)
+    (config.lib.setDefault "dock" "show-recents" false)
+    (config.lib.setDefault "finder" "ShowPathbar" true)
+  ];
 }

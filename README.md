@@ -15,7 +15,8 @@ Writing Nix libraries typically means:
 Instead of defining functions separately from their specifications, define them as **config values** that bundle everything together:
 
 ```nix
-lib.flake.double = {
+# Define at nlib.lib.<name> with full metadata
+nlib.lib.double = {
   type = lib.types.functionTo lib.types.int;
   fn = x: x * 2;
   description = "Double a number";
@@ -24,6 +25,9 @@ lib.flake.double = {
     expected = 10;
   };
 };
+
+# Use via lib.flake.<name> (plain function)
+result = config.lib.flake.double 5;  # => 10
 ```
 
 This gives you:
@@ -45,8 +49,8 @@ This gives you:
     inputs.nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.nlib.flakeModules.default ];
 
-      # Pure libs (no pkgs dependency)
-      lib.flake.add = {
+      # Define pure libs at nlib.lib.<name>
+      nlib.lib.add = {
         type = lib.types.functionTo (lib.types.functionTo lib.types.int);
         fn = a: b: a + b;
         description = "Add two integers";
@@ -57,8 +61,9 @@ This gives you:
       };
 
       # Per-system libs (depend on pkgs)
-      perSystem = { pkgs, lib, ... }: {
-        lib.writeGreeting = {
+      perSystem = { pkgs, lib, config, ... }: {
+        # Define at nlib.lib.<name>
+        nlib.lib.writeGreeting = {
           type = lib.types.functionTo lib.types.package;
           fn = name: pkgs.writeText "greeting-${name}" "Hello, ${name}!";
           description = "Create a greeting file";
@@ -67,24 +72,33 @@ This gives you:
             expected = "greeting-Alice";
           };
         };
+
+        # Use via config.lib.<name>
+        packages.greeting = config.lib.writeGreeting "World";
       };
     };
 }
 ```
 
+**API Pattern:**
+- **Define** at `nlib.lib.<name>` with `{ type, fn, description, tests }`
+- **Use** via `lib.<namespace>.<name>` (plain function)
+
 Your functions are available at:
-- `flake.lib.<name>` - pure flake libs
+- `flake.lib.flake.<name>` - pure flake libs
 - `legacyPackages.${system}.nlib.<name>` - per-system libs
 
 ### With NixOS, home-manager, or other module systems
 
 ```nix
+{ config, lib, ... }:
 {
   imports = [ nlib.nixosModules.default ];
 
   nlib.enable = true;
 
-  lib.triple = {
+  # Define at nlib.lib.<name>
+  nlib.lib.triple = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * 3;
     description = "Triple a number";
@@ -93,26 +107,34 @@ Your functions are available at:
       expected = 12;
     };
   };
+
+  # Use via config.lib.<name>
+  environment.etc."tripled".text = toString (config.lib.triple 7);  # => "21"
 }
 ```
 
 Available modules:
-- `nlib.nixosModules.default` - exports to `flake.lib.nixos.*`
-- `nlib.homeModules.default` - exports to `flake.lib.home.*`
-- `nlib.nixvimModules.default` - exports to `flake.lib.vim.*`
-- `nlib.darwinModules.default` - exports to `flake.lib.darwin.*`
+- `nlib.nixosModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.nixos.*`
+- `nlib.homeModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.home.*`
+- `nlib.nixvimModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.vim.*`
+- `nlib.darwinModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.darwin.*`
 
 ## Output Structure
 
-Following the [dendritic pattern](https://github.com/mightyiam/dendritic), libs are organized by class:
+Following the [dendritic pattern](https://github.com/mightyiam/dendritic), libs are organized by namespace:
 
 ```
-flake.lib.add              # Pure flake libs (from lib.flake.*)
-flake.lib.nixos.helper     # NixOS libs (from nixosConfigurations)
-flake.lib.home.util        # Home-manager libs
-flake.lib.vim.mapping      # Nixvim libs
-flake.lib.darwin.service   # Nix-darwin libs
+# Flake outputs (plain functions)
+flake.lib.flake.add            # Pure flake libs (from nlib.lib.*)
+flake.lib.nixos.helper         # NixOS libs (from nixosConfigurations)
+flake.lib.home.util            # Home-manager libs
+flake.lib.vim.mapping          # Nixvim libs
+flake.lib.darwin.service       # Nix-darwin libs
 legacyPackages.x86_64-linux.nlib.writeGreeting  # Per-system libs
+
+# Within module scope (plain functions)
+config.lib.flake.<name>        # In flake-parts scope
+config.lib.<name>              # In NixOS/home-manager/darwin/nixvim scope
 ```
 
 ## Running Tests

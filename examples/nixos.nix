@@ -1,22 +1,24 @@
 # Example: Defining libs in NixOS module
 #
-# These are collected and available at: flake.lib.nixos.<name>
+# Define at: nlib.lib.<name>
+# Use at: config.lib.<name> (within NixOS config)
+# Output at: flake.lib.nixos.<name> (collected at flake-parts level)
 #
 # Usage in nixosConfigurations:
 #   modules = [
 #     nlib.nixosModules.default
 #     {
 #       nlib.enable = true;
-#       lib.myHelper = { ... };
+#       nlib.lib.myHelper = { ... };
 #     }
 #   ];
 #
-{ lib, ... }:
+{ lib, config, ... }:
 {
   nlib.enable = true;
 
   # NixOS-specific lib functions
-  lib.mkSystemdService = {
+  nlib.lib.mkSystemdService = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       systemd.services.${name} = {
@@ -36,7 +38,7 @@
     };
   };
 
-  lib.enableService = {
+  nlib.lib.enableService = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       services.${name}.enable = true;
@@ -50,7 +52,7 @@
     };
   };
 
-  lib.openFirewallPort = {
+  nlib.lib.openFirewallPort = {
     type = lib.types.functionTo lib.types.attrs;
     fn = port: {
       networking.firewall.allowedTCPPorts = [ port ];
@@ -63,4 +65,20 @@
       };
     };
   };
+
+  # ============================================================
+  # Usage: Real configs using the libs (for e2e testing)
+  # ============================================================
+
+  imports = [
+    # Use lib to create a systemd service
+    (config.lib.mkSystemdService "example-daemon")
+
+    # Use lib to open firewall ports
+    (config.lib.openFirewallPort 8080)
+    (config.lib.openFirewallPort 443)
+
+    # Use lib to enable a service
+    (config.lib.enableService "openssh")
+  ];
 }

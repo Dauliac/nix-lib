@@ -1,15 +1,17 @@
 # Example: Defining libs in flake-parts (pure, no pkgs dependency)
 #
-# These are available at: flake.lib.<name>
+# Define at: nlib.lib.<name>
+# Use at: config.lib.flake.<name> (within flake-parts)
+# Output at: flake.lib.flake.<name>
 #
 # Usage in flake.nix:
 #   imports = [ nlib.flakeModules.default ];
-#   lib.flake.double = { ... };
+#   nlib.lib.double = { ... };
 #
 { lib, ... }:
 {
   # Pure flake-level lib - no system/pkgs dependency
-  lib.flake.double = {
+  nlib.lib.double = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * 2;
     description = "Double a number";
@@ -23,7 +25,7 @@
     };
   };
 
-  lib.flake.add = {
+  nlib.lib.add = {
     type = lib.types.functionTo (lib.types.functionTo lib.types.int);
     fn = a: b: a + b;
     description = "Add two integers";
@@ -36,7 +38,7 @@
     };
   };
 
-  lib.flake.compose = {
+  nlib.lib.compose = {
     type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.unspecified));
     fn =
       f: g: x:
@@ -51,4 +53,18 @@
       expected = 12; # (5 + 1) * 2
     };
   };
+
+  # ============================================================
+  # Usage examples - access via config.lib.flake.<name>
+  # ============================================================
+  #
+  # Within flake-parts modules:
+  #   doubled = config.lib.flake.double 5;           # => 10
+  #   sum = config.lib.flake.add 2 3;                # => 5
+  #   fn = config.lib.flake.compose (x: x * 2) (x: x + 1);
+  #   result = fn 5;                                 # => 12
+  #
+  # From flake outputs (e.g., in another flake):
+  #   doubled = nlib.lib.flake.double 5;             # => 10
+  #   sum = nlib.lib.flake.add 2 3;                  # => 5
 }

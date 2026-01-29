@@ -6,12 +6,15 @@
 #   imports = [ (nlib.mkAdapter { name = "nixvim"; }) ];
 #
 # In NixOS/home-manager modules:
-#   config.lib.myFunc = {
+#   nlib.lib.myFunc = {
 #     type = lib.types.functionTo lib.types.int;
 #     fn = x: x * 2;
 #     description = "Double a number";
 #     tests."doubles 5" = { args.x = 5; expected = 10; };
 #   };
+#
+# The plain functions are auto-populated to config.lib.<name>
+#
 { lib }:
 let
   libDefType = import ./libDefType.nix { inherit lib; };
@@ -53,16 +56,16 @@ let
   # Extract plain functions
   extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
 
-  # Get lib definitions from config.lib
-  libDefs = config.lib or { };
+  # Get lib definitions from nlib.lib
+  libDefs = cfg.lib or { };
   allMeta = if cfg.enable then libDefsToMeta libDefs else { };
   allLibs = if cfg.enable then extractFns libDefs else { };
 in
 {
   imports = [ ../_all.nix ];
 
-  # Define options.lib for this module system
-  options.lib = lib.mkOption {
+  # Define options.nlib.lib for lib definitions
+  options.nlib.lib = lib.mkOption {
     type = lib.types.attrsOf libDefType;
     default = { };
     description = ''
@@ -70,17 +73,29 @@ in
 
       Usage:
       ```nix
-      config.lib.myFunc = {
+      nlib.lib.myFunc = {
         type = lib.types.functionTo lib.types.int;
         fn = x: x * 2;
         description = "Double a number";
         tests."doubles 5" = { args.x = 5; expected = 10; };
       };
       ```
+
+      The plain functions are auto-populated to config.lib.<name>
     '';
   };
 
+  # Define options.lib for the extracted functions (output)
+  options.lib = lib.mkOption {
+    type = lib.types.lazyAttrsOf lib.types.unspecified;
+    default = { };
+    description = "Lib functions (auto-populated from nlib.lib)";
+  };
+
   config = {
+    # Auto-populate lib with extracted functions
+    lib = allLibs;
+
     nlib.namespace = lib.mkDefault namespace;
     nlib._libs = allLibs;
     nlib._libsMeta = allMeta;

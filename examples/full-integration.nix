@@ -1,8 +1,8 @@
 # Example: Full integration - flake.parts -> NixOS -> home-manager
 #
 # This example shows how to:
-# 1. Define libs in flake.parts
-# 2. Use those libs in NixOS configuration
+# 1. Define libs in flake.parts (nlib.lib.*)
+# 2. Use those libs in NixOS configuration (via self.lib.flake.*)
 # 3. Use those libs in home-manager (nested inside NixOS)
 #
 # This is a complete flake.nix example:
@@ -36,9 +36,9 @@
       imports = [ nlib.flakeModules.default ];
 
       # ============================================================
-      # 1. Define libs in flake.parts (available at flake.lib.*)
+      # 1. Define libs in flake.parts (available at self.lib.flake.*)
       # ============================================================
-      lib.flake = {
+      nlib.lib = {
         # Helper to create consistent user configs
         mkUser = {
           type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.attrs;
@@ -122,7 +122,7 @@
         # Pass flake libs to NixOS modules via specialArgs
         specialArgs = {
           inherit self;
-          myLib = self.lib; # flake.lib is available here
+          myLib = self.lib.flake; # self.lib.flake contains plain functions
         };
         modules = [
           # Include home-manager NixOS module
@@ -132,8 +132,11 @@
           (
             { myLib, ... }:
             {
-              # Use flake lib to create user
+              # ============================================================
+              # Usage: Real configs using flake libs (for e2e testing)
+              # ============================================================
               imports = [
+                # Use flake lib to create users
                 (myLib.mkUser "alice")
                 (myLib.mkUser "bob")
               ];

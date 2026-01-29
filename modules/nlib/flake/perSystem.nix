@@ -1,15 +1,17 @@
 # nlib perSystem flake.parts module
 #
-# Defines config.lib for per-system libs inside the perSystem block:
+# Defines nlib.lib for per-system libs inside the perSystem block:
 #
 #   perSystem = { pkgs, lib, config, ... }: {
-#     lib.writeGreeting = {
+#     nlib.lib.writeGreeting = {
 #       type = lib.types.functionTo lib.types.package;
 #       fn = name: pkgs.writeText "greeting" "Hello, ${name}!";
 #       description = "Write a greeting file";
 #       tests."greets Alice" = { args.name = "Alice"; expected = "greeting-Alice"; };
 #     };
 #   };
+#
+# The plain functions are auto-populated to lib.<name>
 #
 { lib, ... }:
 let
@@ -19,19 +21,16 @@ in
   perSystem =
     { lib, config, ... }:
     let
-      # Convert lib definitions to metadata format
-
       # Extract plain functions
       extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
 
-      # Get lib definitions from config.lib
-      perSystemLibDefs = config.lib or { };
+      # Get lib definitions from nlib.lib
+      perSystemLibDefs = config.nlib.lib or { };
       perSystemFns = extractFns perSystemLibDefs;
-
     in
     {
-      # Define options.lib for per-system libs
-      options.lib = lib.mkOption {
+      # Define options.nlib.lib for per-system lib definitions
+      options.nlib.lib = lib.mkOption {
         type = lib.types.attrsOf libDefType;
         default = { };
         description = ''
@@ -40,7 +39,7 @@ in
           Usage:
           ```nix
           perSystem = { pkgs, lib, config, ... }: {
-            lib.writeGreeting = {
+            nlib.lib.writeGreeting = {
               type = lib.types.functionTo lib.types.package;
               fn = name: pkgs.writeText "greeting" "Hello, ''${name}!";
               description = "Write a greeting file";
@@ -48,7 +47,16 @@ in
             };
           };
           ```
+
+          The plain functions are auto-populated to lib.<name>
         '';
+      };
+
+      # Define options.lib for the extracted functions (output)
+      options.lib = lib.mkOption {
+        type = lib.types.lazyAttrsOf lib.types.unspecified;
+        default = { };
+        description = "Per-system lib functions (auto-populated from nlib.lib)";
       };
 
       options.nlib.namespace = lib.mkOption {
@@ -59,6 +67,9 @@ in
 
       # Export evaluated libs
       config = {
+        # Auto-populate lib with extracted functions
+        lib = perSystemFns;
+
         # Auto-expose to legacyPackages.nlib for external access
         legacyPackages.nlib = perSystemFns;
       };

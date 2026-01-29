@@ -1,13 +1,15 @@
 # nlib flake.parts module
 #
-# Provides direct config.lib.<class>.<name> API for defining libs:
+# Provides nlib.lib.<name> API for defining libs:
 #
-#   config.lib.flake.double = {
+#   nlib.lib.double = {
 #     type = lib.types.functionTo lib.types.int;
 #     fn = x: x * 2;
 #     description = "Double a number";
 #     tests."doubles 5" = { args.x = 5; expected = 10; };
 #   };
+#
+# The plain functions are auto-populated to lib.flake.<name>
 #
 { lib, config, ... }:
 let
@@ -31,8 +33,8 @@ let
   # Extract plain functions from lib definitions
   extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
 
-  # Flake-level libs
-  flakeLibDefs = config.lib.flake or { };
+  # Flake-level libs from nlib.lib
+  flakeLibDefs = cfg.lib or { };
   flakeLibsMeta = libDefsToMeta flakeLibDefs;
   flakeLibs = extractFns flakeLibDefs;
 
@@ -50,70 +52,54 @@ let
 in
 {
   imports = [
-    # nlib option modules are auto-discovered by import-tree
     ./perSystem.nix
   ];
 
-  # Define options.lib.<class> for each dendritic class
-  options.lib = {
-    flake = lib.mkOption {
-      type = lib.types.attrsOf libDefType;
-      default = { };
-      description = ''
-        Pure flake-level lib definitions (no pkgs dependency).
+  # Define options.nlib.lib for flake-level lib definitions
+  options.nlib.lib = lib.mkOption {
+    type = lib.types.attrsOf libDefType;
+    default = { };
+    description = ''
+      Pure flake-level lib definitions (no pkgs dependency).
 
-        Usage:
-        ```nix
-        config.lib.flake.double = {
-          type = lib.types.functionTo lib.types.int;
-          fn = x: x * 2;
-          description = "Double a number";
-          tests."doubles 5" = { args.x = 5; expected = 10; };
-        };
-        ```
-      '';
-    };
+      Usage:
+      ```nix
+      nlib.lib.double = {
+        type = lib.types.functionTo lib.types.int;
+        fn = x: x * 2;
+        description = "Double a number";
+        tests."doubles 5" = { args.x = 5; expected = 10; };
+      };
+      ```
 
-    nixos = lib.mkOption {
-      type = lib.types.attrsOf libDefType;
-      default = { };
-      description = "NixOS-related lib definitions (collected from nixosConfigurations)";
-    };
+      The plain functions are auto-populated to lib.flake.<name>
+    '';
+  };
 
-    home = lib.mkOption {
-      type = lib.types.attrsOf libDefType;
-      default = { };
-      description = "Home-manager-related lib definitions";
-    };
-
-    darwin = lib.mkOption {
-      type = lib.types.attrsOf libDefType;
-      default = { };
-      description = "Nix-darwin-related lib definitions";
-    };
-
-    vim = lib.mkOption {
-      type = lib.types.attrsOf libDefType;
-      default = { };
-      description = "Nixvim-related lib definitions";
-    };
+  # Define options.lib.flake for the extracted functions (output)
+  options.lib.flake = lib.mkOption {
+    type = lib.types.lazyAttrsOf lib.types.unspecified;
+    default = { };
+    description = "Pure flake-level lib functions (auto-populated from nlib.lib)";
   };
 
   config = {
+    # Auto-populate lib.flake with extracted functions
+    lib.flake = flakeLibs;
+
     # flake.lib exports:
-    # - flake.lib.<name> for pure flake libs
+    # - flake.lib.flake.<name> for pure flake libs
     # - flake.lib.nixos.<name> for nixos libs
     # - flake.lib.home.<name> for home-manager libs
-    flake.lib =
-      flakeLibs
-      // {
-        nlib = nlibLib;
-        nixos = extractFns (config.lib.nixos or { });
-        home = extractFns (config.lib.home or { });
-        darwin = extractFns (config.lib.darwin or { });
-        vim = extractFns (config.lib.vim or { });
-      }
-      // collectedLibsByNamespace;
+    flake.lib = {
+      inherit (config.lib) flake;
+      nlib = nlibLib;
+      nixos = collectedLibsByNamespace.nixos or { };
+      home = collectedLibsByNamespace.home or { };
+      darwin = collectedLibsByNamespace.darwin or { };
+      vim = collectedLibsByNamespace.vim or { };
+    }
+    // collectedLibsByNamespace;
 
     flake.tests.${cfg.namespace} = tests;
 

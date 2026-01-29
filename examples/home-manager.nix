@@ -1,22 +1,24 @@
 # Example: Defining libs in home-manager module
 #
-# These are collected and available at: flake.lib.home.<name>
+# Define at: nlib.lib.<name>
+# Use at: config.lib.<name> (within home-manager config)
+# Output at: flake.lib.home.<name> (collected at flake-parts level)
 #
 # Usage in homeConfigurations or as NixOS home-manager module:
 #   modules = [
 #     nlib.homeModules.default
 #     {
 #       nlib.enable = true;
-#       lib.myHelper = { ... };
+#       nlib.lib.myHelper = { ... };
 #     }
 #   ];
 #
-{ lib, ... }:
+{ lib, config, ... }:
 {
   nlib.enable = true;
 
   # Home-manager specific lib functions
-  lib.mkAlias = {
+  nlib.lib.mkAlias = {
     type = lib.types.functionTo (lib.types.functionTo lib.types.attrs);
     fn = name: command: {
       programs.bash.shellAliases.${name} = command;
@@ -35,7 +37,7 @@
     };
   };
 
-  lib.mkGitConfig = {
+  nlib.lib.mkGitConfig = {
     type = lib.types.functionTo (lib.types.functionTo lib.types.attrs);
     fn = name: email: {
       programs.git = {
@@ -60,7 +62,7 @@
     };
   };
 
-  lib.enableProgram = {
+  nlib.lib.enableProgram = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       programs.${name}.enable = true;
@@ -73,4 +75,23 @@
       };
     };
   };
+
+  # ============================================================
+  # Usage: Real configs using the libs (for e2e testing)
+  # ============================================================
+
+  imports = [
+    # Use lib to create shell aliases
+    (config.lib.mkAlias "ll" "ls -la")
+    (config.lib.mkAlias "la" "ls -A")
+    (config.lib.mkAlias ".." "cd ..")
+    (config.lib.mkAlias "g" "git")
+
+    # Use lib to configure git
+    (config.lib.mkGitConfig "Test User" "test@example.com")
+
+    # Use lib to enable programs
+    (config.lib.enableProgram "direnv")
+    (config.lib.enableProgram "fzf")
+  ];
 }
