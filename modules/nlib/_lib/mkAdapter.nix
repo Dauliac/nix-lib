@@ -53,8 +53,8 @@ let
       }) def.tests;
     }) defs;
 
-  # Extract plain functions
-  extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
+  # Extract plain functions (only visible/public ones)
+  extractFns = defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible) defs);
 
   # Get lib definitions from nlib.lib
   libDefs = cfg.lib or { };

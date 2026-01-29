@@ -30,8 +30,8 @@ let
       }) def.tests;
     }) defs;
 
-  # Extract plain functions from lib definitions
-  extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
+  # Extract plain functions from lib definitions (only visible/public ones)
+  extractFns = defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible) defs);
 
   # Flake-level libs from nlib.lib
   flakeLibDefs = cfg.lib or { };

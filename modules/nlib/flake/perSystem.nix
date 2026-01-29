@@ -21,8 +21,8 @@ in
   perSystem =
     { lib, config, ... }:
     let
-      # Extract plain functions
-      extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
+      # Extract plain functions (only visible/public ones)
+      extractFns = defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible) defs);
 
       # Get lib definitions from nlib.lib
       perSystemLibDefs = config.nlib.lib or { };
