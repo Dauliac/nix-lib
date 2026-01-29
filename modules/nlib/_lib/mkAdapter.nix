@@ -41,11 +41,14 @@ let
   cfg = config.nlib;
 
   # Convert lib definitions to metadata format
+  # Uses resolved functions from config.lib so overrides are tested
   libDefsToMeta =
-    defs:
+    defs: resolvedFns:
     lib.mapAttrs (attrName: def: {
       name = attrName;
-      inherit (def) fn description type;
+      # Use resolved function from config.lib, fallback to def.fn for private libs
+      fn = resolvedFns.${attrName} or def.fn;
+      inherit (def) description type;
       tests = lib.mapAttrs (_: t: {
         inherit (t) args;
         inherit (t) expected;
@@ -58,8 +61,9 @@ let
 
   # Get lib definitions from nlib.lib
   libDefs = cfg.lib or { };
-  allMeta = if cfg.enable then libDefsToMeta libDefs else { };
   allLibs = if cfg.enable then extractFns libDefs else { };
+  # Use config.lib for resolved functions (includes overrides)
+  allMeta = if cfg.enable then libDefsToMeta libDefs config.lib else { };
 in
 {
   imports = [ ../_all.nix ];

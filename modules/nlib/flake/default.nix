@@ -18,11 +18,14 @@ let
   cfg = config.nlib;
 
   # Convert lib definitions to metadata format for backends
+  # Uses resolved functions from config.lib so overrides are tested
   libDefsToMeta =
-    defs:
+    defs: resolvedFns:
     lib.mapAttrs (name: def: {
       inherit name;
-      inherit (def) fn description type;
+      # Use resolved function from config.lib, fallback to def.fn for private libs
+      fn = resolvedFns.${name} or def.fn;
+      inherit (def) description type;
       tests = lib.mapAttrs (_: t: {
         inherit (t) args;
         inherit (t) expected;
@@ -35,8 +38,9 @@ let
 
   # Flake-level libs from nlib.lib
   flakeLibDefs = cfg.lib or { };
-  flakeLibsMeta = libDefsToMeta flakeLibDefs;
   flakeLibs = extractFns flakeLibDefs;
+  # Use config.lib.flake for resolved functions (includes overrides)
+  flakeLibsMeta = libDefsToMeta flakeLibDefs config.lib.flake;
 
   # Collected libs from other module systems (nixos, home, etc.)
   collectedMeta = lib.mapAttrs (_: collector: collector config) (cfg.metaCollectors or { });
