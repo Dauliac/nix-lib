@@ -7,8 +7,8 @@
     inputs:
     let
       nlib = inputs.get-flake ../../.;
-      nixpkgs = nlib.inputs.nixpkgs;
-      nix-unit = nlib.inputs.nix-unit;
+      inherit (nlib.inputs) nixpkgs;
+      inherit (nlib.inputs) nix-unit;
     in
     nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" ];

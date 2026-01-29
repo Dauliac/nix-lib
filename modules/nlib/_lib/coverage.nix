@@ -19,9 +19,7 @@ in
     let
       libList = attrValues libs;
       total = length libList;
-      withTests = length (
-        builtins.filter (l: ((getMeta l).tests or { }) != { }) libList
-      );
+      withTests = length (builtins.filter (l: ((getMeta l).tests or { }) != { }) libList);
       percent = if total == 0 then 100 else (withTests * 100) / total;
     in
     {

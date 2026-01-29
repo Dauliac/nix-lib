@@ -1,69 +1,28 @@
+# DO-NOT-EDIT. This file was auto-generated using github:vic/flake-file.
+# Use `nix run .#write-flake` to regenerate it.
 {
   description = "nlib - Nix library module with tested, typed, documented functions";
 
+  outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules);
+
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-file.url = "github:vic/flake-file";
     flake-parts = {
+      inputs.nixpkgs-lib.follows = "nixpkgs-lib";
       url = "github:hercules-ci/flake-parts";
-      inputs.nixpkgs-lib.follows = "nixpkgs";
     };
+    import-tree.url = "github:vic/import-tree";
     nix-unit = {
-      url = "github:nix-community/nix-unit";
       inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:nix-community/nix-unit";
+    };
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs-lib.follows = "nixpkgs";
+    systems.url = "github:nix-systems/default";
+    treefmt-nix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:numtide/treefmt-nix";
     };
   };
 
-  outputs =
-    inputs@{ self, flake-parts, ... }:
-    let
-      lib = inputs.nixpkgs.lib;
-      nlibLib = import ./modules/lib { inherit lib; };
-    in
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
-
-      flake = {
-        # flake-parts module
-        flakeModules.default = ./modules/flake;
-
-        # Convenience modules for common module systems
-        nixosModules.default = nlibLib.mkAdapter { name = "nixos"; };
-        homeModules.default = nlibLib.mkAdapter { name = "home-manager"; };
-        nixvimModules.default = nlibLib.mkAdapter { name = "nixvim"; };
-        darwinModules.default = nlibLib.mkAdapter { name = "nix-darwin"; };
-
-        # Generic adapter factory for any module system
-        mkAdapter = nlibLib.mkAdapter;
-
-        # Expose lib for direct usage
-        lib.nlib = nlibLib;
-      };
-
-      perSystem =
-        { pkgs, system, ... }:
-        {
-          # Formatter
-          formatter = pkgs.nixfmt;
-
-          # Tests for nix-unit (attrset, not derivation)
-          # Run via: nix-unit --flake .#legacyPackages.<system>.tests
-          legacyPackages.tests = import ./tests { inherit pkgs; };
-
-          # Development shell
-          devShells.default = pkgs.mkShell {
-            packages = [
-              inputs.nix-unit.packages.${system}.default
-              pkgs.nixfmt
-            ];
-            shellHook = ''
-              echo "Run tests: nix-unit --flake .#legacyPackages.${system}.tests"
-            '';
-          };
-        };
-    };
 }

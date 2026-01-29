@@ -6,6 +6,6 @@
     ./namespace.nix
     ./testing.nix
     ./coverage.nix
-    ./_libs.nix
+    ./libs.nix
   ];
 }

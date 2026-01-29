@@ -11,7 +11,7 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
@@ -44,7 +44,9 @@
     description = "Enable a NixOS service";
     tests."enables openssh" = {
       args.name = "openssh";
-      expected = { services.openssh.enable = true; };
+      expected = {
+        services.openssh.enable = true;
+      };
     };
   };
 
@@ -56,7 +58,9 @@
     description = "Open a TCP port in the firewall";
     tests."opens port 80" = {
       args.port = 80;
-      expected = { networking.firewall.allowedTCPPorts = [ 80 ]; };
+      expected = {
+        networking.firewall.allowedTCPPorts = [ 80 ];
+      };
     };
   };
 }

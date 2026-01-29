@@ -11,24 +11,22 @@
 #
 { lib, config, ... }:
 let
-  nlibLib = import ../lib { inherit lib; };
-  libDefType = import ../lib/libDefType.nix { inherit lib; };
+  nlibLib = import ../_lib { inherit lib; };
+  libDefType = import ../_lib/libDefType.nix { inherit lib; };
   cfg = config.nlib;
 
   # Convert lib definitions to metadata format for backends
   libDefsToMeta =
     defs:
-    lib.mapAttrs (
-      name: def: {
-        inherit name;
-        inherit (def) fn description type;
-        tests = lib.mapAttrs (_: t: {
-          args = t.args;
-          expected = t.expected;
-          assertions = t.assertions;
-        }) def.tests;
-      }
-    ) defs;
+    lib.mapAttrs (name: def: {
+      inherit name;
+      inherit (def) fn description type;
+      tests = lib.mapAttrs (_: t: {
+        inherit (t) args;
+        inherit (t) expected;
+        inherit (t) assertions;
+      }) def.tests;
+    }) defs;
 
   # Extract plain functions from lib definitions
   extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
@@ -41,18 +39,18 @@ let
   # Collected libs from other module systems (nixos, home, etc.)
   collectedMeta = lib.mapAttrs (_: collector: collector config) (cfg.metaCollectors or { });
   collectedLibsByNamespace = lib.mapAttrs (_: extractFns) (
-    lib.mapAttrs (_: meta: lib.mapAttrs (_: m: { fn = m.fn; }) meta) collectedMeta
+    lib.mapAttrs (_: meta: lib.mapAttrs (_: m: { inherit (m) fn; }) meta) collectedMeta
   );
 
   # For tests, flatten all metadata
-  allMetaFlat = flakeLibsMeta // lib.foldl' (acc: meta: acc // meta) { } (lib.attrValues collectedMeta);
+  allMetaFlat =
+    flakeLibsMeta // lib.foldl' (acc: meta: acc // meta) { } (lib.attrValues collectedMeta);
 
   tests = nlibLib.backends.toBackend cfg.testing.backend allMetaFlat;
 in
 {
   imports = [
-    ../options
-    ../options/collectors.nix
+    # nlib option modules are auto-discovered by import-tree
     ./perSystem.nix
   ];
 
@@ -109,6 +107,7 @@ in
     flake.lib =
       flakeLibs
       // {
+        nlib = nlibLib;
         nixos = extractFns (config.lib.nixos or { });
         home = extractFns (config.lib.home or { });
         darwin = extractFns (config.lib.darwin or { });

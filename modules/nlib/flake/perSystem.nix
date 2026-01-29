@@ -11,37 +11,21 @@
 #     };
 #   };
 #
-{ lib, config, ... }:
+{ lib, ... }:
 let
-  nlibLib = import ../lib { inherit lib; };
-  libDefType = import ../lib/libDefType.nix { inherit lib; };
-  testingCfg = config.nlib.testing or { };
+  libDefType = import ../_lib/libDefType.nix { inherit lib; };
 in
 {
   perSystem =
-    { pkgs, system, lib, config, ... }:
+    { lib, config, ... }:
     let
       # Convert lib definitions to metadata format
-      libDefsToMeta =
-        defs:
-        lib.mapAttrs (
-          name: def: {
-            inherit name;
-            inherit (def) fn description type;
-            tests = lib.mapAttrs (_: t: {
-              args = t.args;
-              expected = t.expected;
-              assertions = t.assertions;
-            }) def.tests;
-          }
-        ) defs;
 
       # Extract plain functions
       extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
 
       # Get lib definitions from config.lib
       perSystemLibDefs = config.lib or { };
-      perSystemMeta = libDefsToMeta perSystemLibDefs;
       perSystemFns = extractFns perSystemLibDefs;
 
     in

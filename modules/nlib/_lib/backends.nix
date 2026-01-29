@@ -20,9 +20,7 @@
 { lib }:
 let
   inherit (lib)
-    mapAttrs'
     mapAttrsToList
-    nameValuePair
     replaceStrings
     foldl'
     concatLists
@@ -82,7 +80,7 @@ let
               # Assertion with expected value
               {
                 expr = force result;
-                expected = assertion.expected;
+                inherit (assertion) expected;
               }
             else if hasAttr "check" assertion then
               # Assertion with check function
@@ -101,7 +99,7 @@ let
           testName = "test_${sanitize name}_${sanitize desc}";
           testSpec = {
             expr = force result;
-            expected = t.expected;
+            inherit (t) expected;
           };
         }
       ];
@@ -143,7 +141,7 @@ let
       map (test: {
         name = test.testName;
         actual = test.testSpec.expr;
-        expected = test.testSpec.expected;
+        inherit (test.testSpec) expected;
       }) expanded;
 
     # lib.debug.runTests: { testName = { expr, expected } }
@@ -156,7 +154,13 @@ let
   };
 in
 {
-  inherit adapters mkLazy force hasAssertions expandTest;
+  inherit
+    adapters
+    mkLazy
+    force
+    hasAssertions
+    expandTest
+    ;
 
   # Convert all libs to selected backend format
   toBackend =
@@ -167,9 +171,6 @@ in
         meta = getMeta def;
         tests = meta.tests or { };
       in
-      if tests == { } then
-        acc
-      else
-        acc // adapters.${backend} meta.name meta.fn tests
+      if tests == { } then acc else acc // adapters.${backend} meta.name meta.fn tests
     ) { } (builtins.attrValues libs);
 }

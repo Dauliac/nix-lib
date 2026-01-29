@@ -28,14 +28,19 @@
     fn = a: b: a + b;
     description = "Add two integers";
     tests."adds positives" = {
-      args = { a = 2; b = 3; };
+      args = {
+        a = 2;
+        b = 3;
+      };
       expected = 5;
     };
   };
 
   lib.flake.compose = {
     type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.unspecified));
-    fn = f: g: x: f (g x);
+    fn =
+      f: g: x:
+      f (g x);
     description = "Compose two functions (f . g)";
     tests."composes double and add1" = {
       args = {

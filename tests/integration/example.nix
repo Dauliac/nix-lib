@@ -8,10 +8,10 @@ let
   flake = builtins.getFlake (toString ./.);
 
   # Pure flake libs are at flake.lib.<name>
-  double = flake.lib.double;
+  inherit (flake.lib) double;
 
   # Per-system libs are at flake.legacyPackages.<system>.nlib.<name>
-  writeGreeting = flake.legacyPackages.x86_64-linux.nlib.writeGreeting;
+  inherit (flake.legacyPackages.x86_64-linux.nlib) writeGreeting;
 in
 {
   # Use the double function

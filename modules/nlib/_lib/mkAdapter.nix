@@ -14,8 +14,7 @@
 #   };
 { lib }:
 let
-  nlibLib = import ./lib { inherit lib; };
-  libDefType = import ./lib/libDefType.nix { inherit lib; };
+  libDefType = import ./libDefType.nix { inherit lib; };
 
   namespaces = {
     nixos = "nixos";
@@ -41,17 +40,15 @@ let
   # Convert lib definitions to metadata format
   libDefsToMeta =
     defs:
-    lib.mapAttrs (
-      attrName: def: {
-        name = attrName;
-        inherit (def) fn description type;
-        tests = lib.mapAttrs (_: t: {
-          args = t.args;
-          expected = t.expected;
-          assertions = t.assertions;
-        }) def.tests;
-      }
-    ) defs;
+    lib.mapAttrs (attrName: def: {
+      name = attrName;
+      inherit (def) fn description type;
+      tests = lib.mapAttrs (_: t: {
+        inherit (t) args;
+        inherit (t) expected;
+        inherit (t) assertions;
+      }) def.tests;
+    }) defs;
 
   # Extract plain functions
   extractFns = defs: lib.mapAttrs (_: def: def.fn) defs;
@@ -62,7 +59,7 @@ let
   allLibs = if cfg.enable then extractFns libDefs else { };
 in
 {
-  imports = [ ./options ];
+  imports = [ ../_all.nix ];
 
   # Define options.lib for this module system
   options.lib = lib.mkOption {

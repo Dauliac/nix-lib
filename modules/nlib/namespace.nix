@@ -1,5 +1,5 @@
 # nlib.namespace
-{ lib, config, ... }:
+{ lib, ... }:
 {
   options.nlib.namespace = lib.mkOption {
     type = lib.types.str;

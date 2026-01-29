@@ -11,7 +11,7 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
@@ -24,7 +24,10 @@
     };
     description = "Create a shell alias for bash and zsh";
     tests."creates ls alias" = {
-      args = { name = "ll"; command = "ls -la"; };
+      args = {
+        name = "ll";
+        command = "ls -la";
+      };
       expected = {
         programs.bash.shellAliases.ll = "ls -la";
         programs.zsh.shellAliases.ll = "ls -la";
@@ -43,7 +46,10 @@
     };
     description = "Configure git with name and email";
     tests."configures git" = {
-      args = { name = "John"; email = "john@example.com"; };
+      args = {
+        name = "John";
+        email = "john@example.com";
+      };
       expected = {
         programs.git = {
           enable = true;
@@ -62,7 +68,9 @@
     description = "Enable a home-manager program";
     tests."enables starship" = {
       args.name = "starship";
-      expected = { programs.starship.enable = true; };
+      expected = {
+        programs.starship.enable = true;
+      };
     };
   };
 }

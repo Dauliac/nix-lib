@@ -19,9 +19,19 @@
     };
   };
 
-  outputs = { self, nixpkgs, nlib, home-manager, ... }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nlib,
+      home-manager,
+      ...
+    }:
     nlib.inputs.flake-parts.lib.mkFlake { inputs = { inherit nixpkgs nlib home-manager; }; } {
-      systems = [ "x86_64-linux" "aarch64-linux" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
       imports = [ nlib.flakeModules.default ];
 
@@ -36,7 +46,10 @@
             users.users.${username} = {
               isNormalUser = true;
               home = "/home/${username}";
-              extraGroups = [ "wheel" "networkmanager" ];
+              extraGroups = [
+                "wheel"
+                "networkmanager"
+              ];
             };
           };
           description = "Create a standard user configuration";
@@ -46,7 +59,10 @@
               users.users.alice = {
                 isNormalUser = true;
                 home = "/home/alice";
-                extraGroups = [ "wheel" "networkmanager" ];
+                extraGroups = [
+                  "wheel"
+                  "networkmanager"
+                ];
               };
             };
           };
@@ -62,10 +78,14 @@
           tests."creates bob home" = {
             args = {
               username = "bob";
-              homeConfig = { home.stateVersion = "24.05"; };
+              homeConfig = {
+                home.stateVersion = "24.05";
+              };
             };
             expected = {
-              home-manager.users.bob = { home.stateVersion = "24.05"; };
+              home-manager.users.bob = {
+                home.stateVersion = "24.05";
+              };
             };
           };
         };
@@ -79,10 +99,16 @@
           };
           description = "Create shell aliases for bash and zsh";
           tests."creates aliases" = {
-            args.aliases = { ll = "ls -la"; };
+            args.aliases = {
+              ll = "ls -la";
+            };
             expected = {
-              programs.bash.shellAliases = { ll = "ls -la"; };
-              programs.zsh.shellAliases = { ll = "ls -la"; };
+              programs.bash.shellAliases = {
+                ll = "ls -la";
+              };
+              programs.zsh.shellAliases = {
+                ll = "ls -la";
+              };
             };
           };
         };
@@ -103,56 +129,63 @@
           home-manager.nixosModules.home-manager
 
           # Main configuration
-          ({ config, lib, myLib, ... }: {
-            # Use flake lib to create user
-            imports = [
-              (myLib.mkUser "alice")
-              (myLib.mkUser "bob")
-            ];
-
-            # Configure home-manager
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-
-            # ============================================================
-            # 3. Home-manager config using flake libs
-            # ============================================================
-            home-manager.users.alice = { pkgs, ... }: {
-              home.stateVersion = "24.05";
-
-              # Use flake lib inside home-manager
+          (
+            { myLib, ... }:
+            {
+              # Use flake lib to create user
               imports = [
-                (myLib.mkShellAliases {
-                  ll = "ls -la";
-                  la = "ls -A";
-                  ".." = "cd ..";
-                })
+                (myLib.mkUser "alice")
+                (myLib.mkUser "bob")
               ];
 
-              programs.git = {
-                enable = true;
-                userName = "Alice";
-                userEmail = "alice@example.com";
-              };
-            };
+              # Configure home-manager
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
 
-            home-manager.users.bob = { pkgs, ... }: {
-              home.stateVersion = "24.05";
+              # ============================================================
+              # 3. Home-manager config using flake libs
+              # ============================================================
+              home-manager.users.alice =
+                { ... }:
+                {
+                  home.stateVersion = "24.05";
 
-              # Use flake lib inside home-manager
-              imports = [
-                (myLib.mkShellAliases {
-                  ll = "eza -la";
-                  tree = "eza --tree";
-                })
-              ];
-            };
+                  # Use flake lib inside home-manager
+                  imports = [
+                    (myLib.mkShellAliases {
+                      ll = "ls -la";
+                      la = "ls -A";
+                      ".." = "cd ..";
+                    })
+                  ];
 
-            # Required NixOS options
-            system.stateVersion = "24.05";
-            fileSystems."/".device = "/dev/sda1";
-            boot.loader.grub.device = "/dev/sda";
-          })
+                  programs.git = {
+                    enable = true;
+                    userName = "Alice";
+                    userEmail = "alice@example.com";
+                  };
+                };
+
+              home-manager.users.bob =
+                { ... }:
+                {
+                  home.stateVersion = "24.05";
+
+                  # Use flake lib inside home-manager
+                  imports = [
+                    (myLib.mkShellAliases {
+                      ll = "eza -la";
+                      tree = "eza --tree";
+                    })
+                  ];
+                };
+
+              # Required NixOS options
+              system.stateVersion = "24.05";
+              fileSystems."/".device = "/dev/sda1";
+              boot.loader.grub.device = "/dev/sda";
+            }
+          )
         ];
       };
     };

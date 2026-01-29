@@ -35,7 +35,8 @@
 
   lib.wrapWithEnv = {
     type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.package));
-    fn = pkg: env: name:
+    fn =
+      pkg: env: name:
       pkgs.writeShellScriptBin name ''
         export ${lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "${k}=${v}") env)}
         exec ${pkg}/bin/${name} "$@"
@@ -44,7 +45,9 @@
     tests."wraps with PATH" = {
       args = {
         pkg = pkgs.hello;
-        env = { MY_VAR = "test"; };
+        env = {
+          MY_VAR = "test";
+        };
         name = "hello";
       };
       expected = "hello";

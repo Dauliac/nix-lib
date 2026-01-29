@@ -11,7 +11,7 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
@@ -24,7 +24,9 @@
     description = "Add a homebrew package";
     tests."adds wget" = {
       args.name = "wget";
-      expected = { homebrew.brews = [ "wget" ]; };
+      expected = {
+        homebrew.brews = [ "wget" ];
+      };
     };
   };
 
@@ -36,7 +38,9 @@
     description = "Add a homebrew cask";
     tests."adds firefox" = {
       args.name = "firefox";
-      expected = { homebrew.casks = [ "firefox" ]; };
+      expected = {
+        homebrew.casks = [ "firefox" ];
+      };
     };
   };
 
@@ -47,8 +51,14 @@
     };
     description = "Set a macOS default";
     tests."sets dock autohide" = {
-      args = { domain = "dock"; key = "autohide"; value = true; };
-      expected = { system.defaults.dock.autohide = true; };
+      args = {
+        domain = "dock";
+        key = "autohide";
+        value = true;
+      };
+      expected = {
+        system.defaults.dock.autohide = true;
+      };
     };
   };
 }

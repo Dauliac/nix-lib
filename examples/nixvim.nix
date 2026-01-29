@@ -11,7 +11,7 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
@@ -19,19 +19,27 @@
   lib.mkKeymap = {
     type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.attrs));
     fn = mode: key: action: {
-      keymaps = [{
-        inherit mode key action;
-      }];
+      keymaps = [
+        {
+          inherit mode key action;
+        }
+      ];
     };
     description = "Create a vim keymap";
     tests."creates normal mode keymap" = {
-      args = { mode = "n"; key = "<leader>f"; action = ":Telescope find_files<CR>"; };
+      args = {
+        mode = "n";
+        key = "<leader>f";
+        action = ":Telescope find_files<CR>";
+      };
       expected = {
-        keymaps = [{
-          mode = "n";
-          key = "<leader>f";
-          action = ":Telescope find_files<CR>";
-        }];
+        keymaps = [
+          {
+            mode = "n";
+            key = "<leader>f";
+            action = ":Telescope find_files<CR>";
+          }
+        ];
       };
     };
   };
@@ -44,7 +52,9 @@
     description = "Enable a nixvim plugin";
     tests."enables telescope" = {
       args.name = "telescope";
-      expected = { plugins.telescope.enable = true; };
+      expected = {
+        plugins.telescope.enable = true;
+      };
     };
   };
 
@@ -55,8 +65,13 @@
     };
     description = "Set a vim option";
     tests."sets tabstop" = {
-      args = { name = "tabstop"; value = 4; };
-      expected = { opts.tabstop = 4; };
+      args = {
+        name = "tabstop";
+        value = 4;
+      };
+      expected = {
+        opts.tabstop = 4;
+      };
     };
   };
 }

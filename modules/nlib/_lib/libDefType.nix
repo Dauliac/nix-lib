@@ -16,12 +16,9 @@ let
   inherit (lib)
     mkOption
     types
-    hasAttr
-    isList
     ;
 
   # Check if test uses assertions format
-  hasAssertions = t: hasAttr "assertions" t && isList t.assertions;
 
   # Test case submodule
   testCaseType = types.submodule {
@@ -36,25 +33,27 @@ let
         description = "Expected return value (for simple tests)";
       };
       assertions = mkOption {
-        type = types.listOf (types.submodule {
-          options = {
-            name = mkOption {
-              type = types.str;
-              default = "assertion";
-              description = "Name of this assertion";
+        type = types.listOf (
+          types.submodule {
+            options = {
+              name = mkOption {
+                type = types.str;
+                default = "assertion";
+                description = "Name of this assertion";
+              };
+              expected = mkOption {
+                type = types.unspecified;
+                default = null;
+                description = "Expected value for this assertion";
+              };
+              check = mkOption {
+                type = types.nullOr (types.functionTo types.bool);
+                default = null;
+                description = "Predicate function to check result";
+              };
             };
-            expected = mkOption {
-              type = types.unspecified;
-              default = null;
-              description = "Expected value for this assertion";
-            };
-            check = mkOption {
-              type = types.nullOr (types.functionTo types.bool);
-              default = null;
-              description = "Predicate function to check result";
-            };
-          };
-        });
+          }
+        );
         default = [ ];
         description = "Multiple assertions for this test case";
       };
@@ -68,7 +67,7 @@ let
 
   # Lib definition submodule
   libDefType = types.submodule (
-    { name, config, ... }:
+    { name, ... }:
     {
       options = {
         type = mkOption {

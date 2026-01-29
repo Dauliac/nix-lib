@@ -5,8 +5,8 @@
   pkgs ? import <nixpkgs> { },
 }:
 let
-  lib = pkgs.lib;
-  nlib = import ../modules/lib { inherit lib; };
+  inherit (pkgs) lib;
+  nlib = import ../modules/nlib/_lib { inherit lib; };
   inherit (nlib) backends coverage;
 
   # Test metadata (simulates what libDefType produces)
@@ -125,7 +125,8 @@ in
 
   test_backend_nix_unit_sanitizes_names = {
     expr = builtins.hasAttr "test_my_function_test_case" (
-      backends.adapters.nix-unit "my-function" myFunctionMeta.my-function.fn myFunctionMeta.my-function.tests
+      backends.adapters.nix-unit "my-function" myFunctionMeta.my-function.fn
+        myFunctionMeta.my-function.tests
     );
     expected = true;
   };
@@ -133,8 +134,7 @@ in
   test_backend_nix_unit_generates_test = {
     expr =
       (backends.adapters.nix-unit "add" addMeta.add.fn addMeta.add.tests)
-        .test_add_basic_addition
-        .expected;
+      .test_add_basic_addition.expected;
     expected = 5;
   };
 
@@ -190,17 +190,13 @@ in
 
   test_assertions_check_passes = {
     expr =
-      (backends.toBackend "nix-unit" assertionsMeta)
-        .test_double_comprehensive_check_is_positive
-        .expected;
+      (backends.toBackend "nix-unit" assertionsMeta).test_double_comprehensive_check_is_positive.expected;
     expected = true;
   };
 
   test_assertions_expected_value = {
     expr =
-      (backends.toBackend "nix-unit" assertionsMeta)
-        .test_double_comprehensive_check_equals_10
-        .expected;
+      (backends.toBackend "nix-unit" assertionsMeta).test_double_comprehensive_check_equals_10.expected;
     expected = 10;
   };
 
