@@ -1,7 +1,7 @@
 # Example: Defining libs in nix-darwin module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.lib.<name> (within darwin config)
+# Use at: config.nlib.fns.<name> (within darwin config)
 # Output at: flake.lib.darwin.<name> (collected at flake-parts level)
 #
 # Usage in darwinConfigurations:
@@ -13,7 +13,7 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
@@ -47,13 +47,19 @@
   };
 
   nlib.lib.setDefault = {
-    type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.attrs));
-    fn = domain: key: value: {
-      system.defaults.${domain}.${key} = value;
-    };
+    type = lib.types.functionTo lib.types.attrs;
+    fn =
+      {
+        domain,
+        key,
+        value,
+      }:
+      {
+        system.defaults.${domain}.${key} = value;
+      };
     description = "Set a macOS default";
     tests."sets dock autohide" = {
-      args = {
+      args.a = {
         domain = "dock";
         key = "autohide";
         value = true;
@@ -65,22 +71,14 @@
   };
 
   # ============================================================
-  # Usage: Real configs using the libs (for e2e testing)
+  # Usage Example (in a separate module imported after this one):
   # ============================================================
-
-  imports = [
-    # Use lib to add homebrew packages
-    (config.lib.mkBrewPackage "curl")
-    (config.lib.mkBrewPackage "jq")
-    (config.lib.mkBrewPackage "ripgrep")
-
-    # Use lib to add homebrew casks
-    (config.lib.mkBrewCask "iterm2")
-    (config.lib.mkBrewCask "visual-studio-code")
-
-    # Use lib to set macOS defaults
-    (config.lib.setDefault "dock" "autohide" true)
-    (config.lib.setDefault "dock" "show-recents" false)
-    (config.lib.setDefault "finder" "ShowPathbar" true)
-  ];
+  #
+  # { config, ... }: {
+  #   imports = [
+  #     (config.nlib.fns.mkBrewPackage "curl")
+  #     (config.nlib.fns.mkBrewCask "iterm2")
+  #     (config.nlib.fns.setDefault { domain = "dock"; key = "autohide"; value = true; })
+  #   ];
+  # }
 }

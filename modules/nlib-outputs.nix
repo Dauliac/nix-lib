@@ -12,4 +12,5 @@ in
   flake.homeModules.default = nlibLib.mkAdapter { name = "home-manager"; };
   flake.darwinModules.default = nlibLib.mkAdapter { name = "nix-darwin"; };
   flake.nixvimModules.default = nlibLib.mkAdapter { name = "nixvim"; };
+  flake.systemManagerModules.default = nlibLib.mkAdapter { name = "system-manager"; };
 }

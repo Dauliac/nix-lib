@@ -1,7 +1,7 @@
 # Example: Defining libs in home-manager module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.lib.<name> (within home-manager config)
+# Use at: config.nlib.fns.<name> (within home-manager config)
 # Output at: flake.lib.home.<name> (collected at flake-parts level)
 #
 # Usage in homeConfigurations or as NixOS home-manager module:
@@ -13,20 +13,22 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
   # Home-manager specific lib functions
   nlib.lib.mkAlias = {
-    type = lib.types.functionTo (lib.types.functionTo lib.types.attrs);
-    fn = name: command: {
-      programs.bash.shellAliases.${name} = command;
-      programs.zsh.shellAliases.${name} = command;
-    };
+    type = lib.types.functionTo lib.types.attrs;
+    fn =
+      { name, command }:
+      {
+        programs.bash.shellAliases.${name} = command;
+        programs.zsh.shellAliases.${name} = command;
+      };
     description = "Create a shell alias for bash and zsh";
     tests."creates ls alias" = {
-      args = {
+      args.a = {
         name = "ll";
         command = "ls -la";
       };
@@ -38,17 +40,19 @@
   };
 
   nlib.lib.mkGitConfig = {
-    type = lib.types.functionTo (lib.types.functionTo lib.types.attrs);
-    fn = name: email: {
-      programs.git = {
-        enable = true;
-        userName = name;
-        userEmail = email;
+    type = lib.types.functionTo lib.types.attrs;
+    fn =
+      { name, email }:
+      {
+        programs.git = {
+          enable = true;
+          userName = name;
+          userEmail = email;
+        };
       };
-    };
     description = "Configure git with name and email";
     tests."configures git" = {
-      args = {
+      args.a = {
         name = "John";
         email = "john@example.com";
       };
@@ -77,21 +81,14 @@
   };
 
   # ============================================================
-  # Usage: Real configs using the libs (for e2e testing)
+  # Usage Example (in a separate module imported after this one):
   # ============================================================
-
-  imports = [
-    # Use lib to create shell aliases
-    (config.lib.mkAlias "ll" "ls -la")
-    (config.lib.mkAlias "la" "ls -A")
-    (config.lib.mkAlias ".." "cd ..")
-    (config.lib.mkAlias "g" "git")
-
-    # Use lib to configure git
-    (config.lib.mkGitConfig "Test User" "test@example.com")
-
-    # Use lib to enable programs
-    (config.lib.enableProgram "direnv")
-    (config.lib.enableProgram "fzf")
-  ];
+  #
+  # { config, ... }: {
+  #   imports = [
+  #     (config.nlib.fns.mkAlias { name = "ll"; command = "ls -la"; })
+  #     (config.nlib.fns.mkGitConfig { name = "User"; email = "user@example.com"; })
+  #     (config.nlib.fns.enableProgram "direnv")
+  #   ];
+  # }
 }

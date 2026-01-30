@@ -6,11 +6,16 @@
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules);
 
   inputs = {
+    devour-flake = {
+      flake = false;
+      url = "github:srid/devour-flake";
+    };
     flake-file.url = "github:vic/flake-file";
     flake-parts = {
       inputs.nixpkgs-lib.follows = "nixpkgs-lib";
       url = "github:hercules-ci/flake-parts";
     };
+    get-flake.url = "github:ursi/get-flake";
     import-tree.url = "github:vic/import-tree";
     nix-unit = {
       inputs.nixpkgs.follows = "nixpkgs";

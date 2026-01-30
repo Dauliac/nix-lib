@@ -1,58 +1,39 @@
-# Example: Overriding lib functions and private libs
+# Example: Private libs (visible = false)
 #
 # nlib uses the module system, so you can:
-# - Override functions with lib.mkForce or module priorities
 # - Mark functions as private with visible = false
-#
-# Tests run against config.lib.*, so overridden functions are tested.
+# - Private functions are tested but not exported
 #
 { lib, ... }:
 {
   # ============================================================
-  # Public function with override
-  # ============================================================
-
-  nlib.lib.greet = {
-    type = lib.types.functionTo lib.types.str;
-    fn = name: "Hello, ${name}!";
-    description = "Greet someone";
-    tests."greets Alice" = {
-      args.name = "Alice";
-      expected = "Bonjour, Alice!"; # Test expects the OVERRIDDEN result
-    };
-  };
-
-  # Override the function - tests will run against this version
-  nlib.lib.greet.fn = lib.mkForce (name: "Bonjour, ${name}!");
-
-  # ============================================================
   # Private function (visible = false)
   # ============================================================
 
-  # Private: not exported to config.lib.*, but still tested
+  # Private: not exported to config.nlib.fns, but still tested
   nlib.lib._internal = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * x;
     description = "Internal helper - square a number";
-    visible = false; # Won't appear in config.lib.flake
+    visible = false; # Won't appear in config.nlib.fns or flake.lib
     tests."squares 4" = {
       args.x = 4;
       expected = 16;
     };
   };
 
-  # Private functions can be used by other libs in the same module
+  # Public function that uses private helper logic
   nlib.lib.sumOfSquares = {
-    type = lib.types.functionTo (lib.types.functionTo lib.types.int);
+    type = lib.types.functionTo lib.types.int;
     fn =
-      a: b:
+      { a, b }:
       let
-        square = x: x * x; # Inline since _internal isn't in config.lib
+        square = x: x * x; # Inline since _internal isn't in config.nlib.fns
       in
       square a + square b;
     description = "Sum of squares of two numbers";
     tests."sum of 3 and 4 squared" = {
-      args = {
+      args.x = {
         a = 3;
         b = 4;
       };
@@ -64,15 +45,16 @@
   # Patterns summary
   # ============================================================
   #
-  # Override:
-  #   nlib.lib.foo.fn = lib.mkForce (x: newImpl);
-  #
   # Private (not exported, still tested):
   #   nlib.lib._helper = {
   #     visible = false;
   #     fn = ...;
   #   };
   #
-  # Default (can be overridden by consumers):
-  #   nlib.lib.foo.fn = lib.mkDefault (x: defaultImpl);
+  # Override (must be in a SEPARATE module):
+  #   # base.nix
+  #   nlib.lib.foo = { fn = x: defaultImpl; ... };
+  #
+  #   # override.nix (imported after base.nix)
+  #   nlib.lib.foo.fn = lib.mkForce (x: newImpl);
 }

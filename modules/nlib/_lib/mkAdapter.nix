@@ -13,7 +13,7 @@
 #     tests."doubles 5" = { args.x = 5; expected = 10; };
 #   };
 #
-# The plain functions are auto-populated to config.lib.<name>
+# The plain functions are auto-populated to config.nlib.fns.<name>
 #
 { lib }:
 let
@@ -25,6 +25,7 @@ let
     home-manager = "home";
     nixvim = "vim";
     nix-darwin = "darwin";
+    system-manager = "system";
     flake = "lib";
   };
 in
@@ -59,6 +60,7 @@ let
         if resolved != null then resolved else def.fn;
       description = def.description or "";
       type = def.type or null;
+      visible = def.visible or true;
       tests = lib.mapAttrs (_: t: {
         args = t.args or { };
         expected = t.expected or null;
@@ -73,8 +75,8 @@ let
 
   # Get lib definitions, flatten, extract, unflatten
   allLibs = if cfg.enable then unflattenFns (extractFnsFlat flatLibDefs) else { };
-  # Use config.lib for resolved functions (includes overrides)
-  allMeta = if cfg.enable then libDefsToMeta flatLibDefs config.lib else { };
+  # Use config.nlib.fns for resolved functions (includes overrides)
+  allMeta = if cfg.enable then libDefsToMeta flatLibDefs cfg.fns else { };
 in
 {
   imports = [ ../_all.nix ];
@@ -104,20 +106,20 @@ in
       };
       ```
 
-      Functions are available at config.lib.<path>
+      Functions are available at config.nlib.fns.<path>
     '';
   };
 
-  # Define options.lib for the extracted functions (output)
-  options.lib = lib.mkOption {
+  # Output functions at nlib.fns (not lib, which conflicts with NixOS built-in)
+  options.nlib.fns = lib.mkOption {
     type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
     description = "Lib functions (auto-populated from nlib.lib)";
   };
 
   config = {
-    # Auto-populate lib with extracted functions
-    lib = allLibs;
+    # Auto-populate nlib.fns with extracted functions
+    nlib.fns = allLibs;
 
     nlib.namespace = lib.mkDefault namespace;
     nlib._libs = allLibs;

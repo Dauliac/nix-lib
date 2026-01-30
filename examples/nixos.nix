@@ -1,7 +1,7 @@
 # Example: Defining libs in NixOS module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.lib.<name> (within NixOS config)
+# Use at: config.nlib.fns.<name> (within NixOS config)
 # Output at: flake.lib.nixos.<name> (collected at flake-parts level)
 #
 # Usage in nixosConfigurations:
@@ -13,7 +13,7 @@
 #     }
 #   ];
 #
-{ lib, config, ... }:
+{ lib, ... }:
 {
   nlib.enable = true;
 
@@ -67,18 +67,14 @@
   };
 
   # ============================================================
-  # Usage: Real configs using the libs (for e2e testing)
+  # Usage Example (in a separate module imported after this one):
   # ============================================================
-
-  imports = [
-    # Use lib to create a systemd service
-    (config.lib.mkSystemdService "example-daemon")
-
-    # Use lib to open firewall ports
-    (config.lib.openFirewallPort 8080)
-    (config.lib.openFirewallPort 443)
-
-    # Use lib to enable a service
-    (config.lib.enableService "openssh")
-  ];
+  #
+  # { config, ... }: {
+  #   imports = [
+  #     (config.nlib.fns.mkSystemdService "example-daemon")
+  #     (config.nlib.fns.openFirewallPort 8080)
+  #     (config.nlib.fns.enableService "openssh")
+  #   ];
+  # }
 }

@@ -26,11 +26,11 @@
   };
 
   nlib.lib.add = {
-    type = lib.types.functionTo (lib.types.functionTo lib.types.int);
-    fn = a: b: a + b;
+    type = lib.types.functionTo lib.types.int;
+    fn = { a, b }: a + b;
     description = "Add two integers";
     tests."adds positives" = {
-      args = {
+      args.x = {
         a = 2;
         b = 3;
       };
@@ -39,13 +39,17 @@
   };
 
   nlib.lib.compose = {
-    type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.unspecified));
+    type = lib.types.functionTo lib.types.unspecified;
     fn =
-      f: g: x:
+      {
+        f,
+        g,
+        x,
+      }:
       f (g x);
     description = "Compose two functions (f . g)";
     tests."composes double and add1" = {
-      args = {
+      args.x = {
         f = x: x * 2;
         g = x: x + 1;
         x = 5;
@@ -59,12 +63,15 @@
   # ============================================================
   #
   # Within flake-parts modules:
-  #   doubled = config.lib.flake.double 5;           # => 10
-  #   sum = config.lib.flake.add 2 3;                # => 5
-  #   fn = config.lib.flake.compose (x: x * 2) (x: x + 1);
-  #   result = fn 5;                                 # => 12
+  #   doubled = config.lib.flake.double 5;                      # => 10
+  #   sum = config.lib.flake.add { a = 2; b = 3; };             # => 5
+  #   result = config.lib.flake.compose {
+  #     f = x: x * 2;
+  #     g = x: x + 1;
+  #     x = 5;
+  #   };                                                         # => 12
   #
   # From flake outputs (e.g., in another flake):
-  #   doubled = nlib.lib.flake.double 5;             # => 10
-  #   sum = nlib.lib.flake.add 2 3;                  # => 5
+  #   doubled = nlib.lib.flake.double 5;                         # => 10
+  #   sum = nlib.lib.flake.add { a = 2; b = 3; };                # => 5
 }

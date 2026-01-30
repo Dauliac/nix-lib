@@ -1,5 +1,36 @@
 {
   "nodes": {
+    "devour-flake": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761148089,
+        "narHash": "sha256-Cd9aWk4P2VGYrK2X28D3vVub2kQIaba7tCTVg+G0AII=",
+        "owner": "srid",
+        "repo": "devour-flake",
+        "rev": "03d5d9112a79aa6ef80495b325fd015d806b98eb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "srid",
+        "repo": "devour-flake",
+        "type": "github"
+      }
+    },
+    "flake-compat": {
+      "locked": {
+        "lastModified": 1733328505,
+        "narHash": "sha256-NeCCThCEP3eCl2l/+27kNNK7QrwZB1IJCrXfrbv5oqU=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "ff81ac966bb2cae68946d5ed5fc4994f96d0ffec",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
     "flake-file": {
       "locked": {
         "lastModified": 1769416693,
@@ -53,6 +84,24 @@
       "original": {
         "owner": "hercules-ci",
         "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "get-flake": {
+      "inputs": {
+        "flake-compat": "flake-compat"
+      },
+      "locked": {
+        "lastModified": 1745945175,
+        "narHash": "sha256-JGDbJRl5v1snA4JX+yp6m3UA6Mazr59Hrgz+UhhP91M=",
+        "owner": "ursi",
+        "repo": "get-flake",
+        "rev": "38401aa2b3a99c77d0c02727471e99e7de2fc366",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ursi",
+        "repo": "get-flake",
         "type": "github"
       }
     },
@@ -133,8 +182,10 @@
     },
     "root": {
       "inputs": {
+        "devour-flake": "devour-flake",
         "flake-file": "flake-file",
         "flake-parts": "flake-parts",
+        "get-flake": "get-flake",
         "import-tree": "import-tree",
         "nix-unit": "nix-unit",
         "nixpkgs": "nixpkgs",

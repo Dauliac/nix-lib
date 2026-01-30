@@ -1,195 +1,195 @@
-# Example: Full integration - flake.parts -> NixOS -> home-manager
+# Full integration example - composes ALL nlib examples
 #
-# This example shows how to:
-# 1. Define libs in flake.parts (nlib.lib.*)
-# 2. Use those libs in NixOS configuration (via self.lib.flake.*)
-# 3. Use those libs in home-manager (nested inside NixOS)
+# This flake.parts module demonstrates:
+# 1. Flake-level libs (pure, no pkgs)
+# 2. Per-system libs (with pkgs)
+# 3. NixOS libs with nested home-manager
+# 4. Standalone home-manager configuration
+# 5. Standalone nixvim configuration
+# 6. Darwin configuration
+# 7. System-manager configuration (standalone + NixOS integration)
 #
-# This is a complete flake.nix example:
+# Import this single file in your test flake to get all examples.
 #
+{ inputs, ... }:
+let
+  inherit (inputs)
+    nixpkgs
+    home-manager
+    nixvim
+    nix-darwin
+    system-manager
+    ;
+  # nlib is passed via inputs.self from the test flake
+  nlib = inputs.self;
+in
 {
-  description = "Full nlib integration example";
+  # ============================================================
+  # 1. Flake-level libs (pure, no pkgs dependency)
+  # ============================================================
+  imports = [ ./flake-parts.nix ];
 
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nlib.url = "github:Dauliac/nlib";
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
+  # ============================================================
+  # 2. Per-system libs (with pkgs dependency)
+  # ============================================================
+  perSystem =
+    { ... }:
+    {
+      imports = [ ./perSystem.nix ];
     };
+
+  # ============================================================
+  # 3. NixOS configuration with nested home-manager
+  # ============================================================
+  flake.nixosConfigurations.test = nixpkgs.lib.nixosSystem {
+    system = "x86_64-linux";
+    modules = [
+      # nlib NixOS adapter
+      nlib.nixosModules.default
+
+      # NixOS-specific libs
+      ./nixos.nix
+
+      # Private libs and override patterns
+      ./override.nix
+
+      # Home-manager as NixOS module
+      home-manager.nixosModules.home-manager
+
+      # NixOS + home-manager configuration
+      {
+        home-manager.useGlobalPkgs = true;
+        home-manager.useUserPackages = true;
+
+        # Home-manager user with nlib libs
+        home-manager.users.test =
+          { ... }:
+          {
+            imports = [
+              # nlib home-manager adapter
+              nlib.homeModules.default
+
+              # Home-manager specific libs
+              ./home-manager.nix
+            ];
+
+            home.stateVersion = "24.05";
+          };
+
+        # User configuration for home-manager
+        users.users.test = {
+          isNormalUser = true;
+          home = "/home/test";
+          group = "test";
+        };
+        users.groups.test = { };
+
+        # Required NixOS options
+        fileSystems."/".device = "/dev/null";
+        boot.loader.grub.device = "/dev/null";
+        system.stateVersion = "24.05";
+      }
+    ];
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      nlib,
-      home-manager,
-      ...
-    }:
-    nlib.inputs.flake-parts.lib.mkFlake { inputs = { inherit nixpkgs nlib home-manager; }; } {
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
+  # ============================================================
+  # 3b. NixOS configuration with user service helpers
+  #     (system-manager-style libs for NixOS user services)
+  # ============================================================
+  flake.nixosConfigurations.test-user-services = nixpkgs.lib.nixosSystem {
+    system = "x86_64-linux";
+    modules = [
+      # nlib NixOS adapter
+      nlib.nixosModules.default
 
-      imports = [ nlib.flakeModules.default ];
+      # User service helpers (mkUserService, mkUserTimer, mkXdgConfigFile)
+      ./system-manager-nixos.nix
 
-      # ============================================================
-      # 1. Define libs in flake.parts (available at self.lib.flake.*)
-      # ============================================================
-      nlib.lib = {
-        # Helper to create consistent user configs
-        mkUser = {
-          type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.attrs;
-          fn = username: {
-            users.users.${username} = {
-              isNormalUser = true;
-              home = "/home/${username}";
-              extraGroups = [
-                "wheel"
-                "networkmanager"
-              ];
-            };
-          };
-          description = "Create a standard user configuration";
-          tests."creates alice" = {
-            args.username = "alice";
-            expected = {
-              users.users.alice = {
-                isNormalUser = true;
-                home = "/home/alice";
-                extraGroups = [
-                  "wheel"
-                  "networkmanager"
-                ];
-              };
-            };
-          };
+      # NixOS configuration
+      {
+        # User configuration
+        users.users.test = {
+          isNormalUser = true;
+          home = "/home/test";
+          group = "test";
         };
+        users.groups.test = { };
 
-        # Helper for home-manager user config
-        mkHomeUser = {
-          type = nixpkgs.lib.types.functionTo (nixpkgs.lib.types.functionTo nixpkgs.lib.types.attrs);
-          fn = username: homeConfig: {
-            home-manager.users.${username} = homeConfig;
-          };
-          description = "Create home-manager config for a user";
-          tests."creates bob home" = {
-            args = {
-              username = "bob";
-              homeConfig = {
-                home.stateVersion = "24.05";
-              };
-            };
-            expected = {
-              home-manager.users.bob = {
-                home.stateVersion = "24.05";
-              };
-            };
-          };
-        };
+        # Required NixOS options
+        fileSystems."/".device = "/dev/null";
+        boot.loader.grub.device = "/dev/null";
+        system.stateVersion = "24.05";
+      }
+    ];
+  };
 
-        # Reusable shell alias generator
-        mkShellAliases = {
-          type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.attrs;
-          fn = aliases: {
-            programs.bash.shellAliases = aliases;
-            programs.zsh.shellAliases = aliases;
-          };
-          description = "Create shell aliases for bash and zsh";
-          tests."creates aliases" = {
-            args.aliases = {
-              ll = "ls -la";
-            };
-            expected = {
-              programs.bash.shellAliases = {
-                ll = "ls -la";
-              };
-              programs.zsh.shellAliases = {
-                ll = "ls -la";
-              };
-            };
-          };
-        };
-      };
+  # ============================================================
+  # 4. Standalone home-manager configuration
+  # ============================================================
+  flake.homeConfigurations.test = home-manager.lib.homeManagerConfiguration {
+    pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    modules = [
+      # nlib home-manager adapter
+      nlib.homeModules.default
 
-      # ============================================================
-      # 2. NixOS configuration using the libs
-      # ============================================================
-      flake.nixosConfigurations.example = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        # Pass flake libs to NixOS modules via specialArgs
-        specialArgs = {
-          inherit self;
-          myLib = self.lib.flake; # self.lib.flake contains plain functions
-        };
-        modules = [
-          # Include home-manager NixOS module
-          home-manager.nixosModules.home-manager
+      # Home-manager specific libs
+      ./home-manager.nix
 
-          # Main configuration
-          (
-            { myLib, ... }:
-            {
-              # ============================================================
-              # Usage: Real configs using flake libs (for e2e testing)
-              # ============================================================
-              imports = [
-                # Use flake lib to create users
-                (myLib.mkUser "alice")
-                (myLib.mkUser "bob")
-              ];
+      # Required home-manager options
+      {
+        home.username = "test";
+        home.homeDirectory = "/home/test";
+        home.stateVersion = "24.05";
+      }
+    ];
+  };
 
-              # Configure home-manager
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
+  # ============================================================
+  # 5. Standalone nixvim configuration
+  # ============================================================
+  flake.nixvimConfigurations.test = nixvim.lib.evalNixvim {
+    modules = [
+      # nlib nixvim adapter
+      nlib.nixvimModules.default
 
-              # ============================================================
-              # 3. Home-manager config using flake libs
-              # ============================================================
-              home-manager.users.alice =
-                { ... }:
-                {
-                  home.stateVersion = "24.05";
+      # Nixvim-specific libs
+      ./nixvim.nix
 
-                  # Use flake lib inside home-manager
-                  imports = [
-                    (myLib.mkShellAliases {
-                      ll = "ls -la";
-                      la = "ls -A";
-                      ".." = "cd ..";
-                    })
-                  ];
+      # Required nixvim options
+      { nixpkgs.pkgs = nixpkgs.legacyPackages.x86_64-linux; }
+    ];
+  };
 
-                  programs.git = {
-                    enable = true;
-                    userName = "Alice";
-                    userEmail = "alice@example.com";
-                  };
-                };
+  # ============================================================
+  # 6. Darwin configuration (for macOS)
+  # ============================================================
+  flake.darwinConfigurations.test = nix-darwin.lib.darwinSystem {
+    system = "x86_64-darwin";
+    modules = [
+      # nlib darwin adapter
+      nlib.darwinModules.default
 
-              home-manager.users.bob =
-                { ... }:
-                {
-                  home.stateVersion = "24.05";
+      # Darwin-specific libs
+      ./darwin.nix
 
-                  # Use flake lib inside home-manager
-                  imports = [
-                    (myLib.mkShellAliases {
-                      ll = "eza -la";
-                      tree = "eza --tree";
-                    })
-                  ];
-                };
+      # Required darwin options
+      { nixpkgs.hostPlatform = "x86_64-darwin"; }
+    ];
+  };
 
-              # Required NixOS options
-              system.stateVersion = "24.05";
-              fileSystems."/".device = "/dev/sda1";
-              boot.loader.grub.device = "/dev/sda";
-            }
-          )
-        ];
-      };
-    };
+  # ============================================================
+  # 7. Standalone system-manager configuration
+  # ============================================================
+  flake.systemConfigs.test = system-manager.lib.makeSystemConfig {
+    modules = [
+      # nlib system-manager adapter
+      nlib.systemManagerModules.default
+
+      # System-manager specific libs
+      ./system-manager.nix
+
+      # Required system-manager options
+      { nixpkgs.hostPlatform = "x86_64-linux"; }
+    ];
+  };
 }

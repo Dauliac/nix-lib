@@ -37,6 +37,7 @@ let
         if resolved != null then resolved else def.fn;
       description = def.description or "";
       type = def.type or null;
+      visible = def.visible or true;
       tests = lib.mapAttrs (_: t: {
         args = t.args or { };
         expected = t.expected or null;
@@ -58,8 +59,9 @@ let
 
   # Collected libs from other module systems (nixos, home, etc.)
   collectedMeta = lib.mapAttrs (_: collector: collector config) (cfg.metaCollectors or { });
-  # Extract fns from collected metadata (already flat, just need fn extraction)
-  extractCollectedFns = meta: lib.mapAttrs (_: m: m.fn) meta;
+  # Extract fns from collected metadata (only visible/public ones)
+  extractCollectedFns =
+    meta: lib.mapAttrs (_: m: m.fn) (lib.filterAttrs (_: m: m.visible or true) meta);
   collectedLibsByNamespace = lib.mapAttrs (_: extractCollectedFns) collectedMeta;
 
   # For tests, flatten all metadata
@@ -127,6 +129,7 @@ in
       home = collectedLibsByNamespace.home or { };
       darwin = collectedLibsByNamespace.darwin or { };
       vim = collectedLibsByNamespace.vim or { };
+      system = collectedLibsByNamespace.system or { };
     }
     // collectedLibsByNamespace;
 

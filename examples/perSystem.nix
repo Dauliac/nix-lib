@@ -29,11 +29,11 @@
   };
 
   nlib.lib.mkScript = {
-    type = lib.types.functionTo (lib.types.functionTo lib.types.package);
-    fn = name: script: pkgs.writeShellScriptBin name script;
+    type = lib.types.functionTo lib.types.package;
+    fn = { name, script }: pkgs.writeShellScriptBin name script;
     description = "Create a shell script package";
     tests."creates hello script" = {
-      args = {
+      args.a = {
         name = "hello";
         script = "echo hello";
       };
@@ -42,16 +42,20 @@
   };
 
   nlib.lib.wrapWithEnv = {
-    type = lib.types.functionTo (lib.types.functionTo (lib.types.functionTo lib.types.package));
+    type = lib.types.functionTo lib.types.package;
     fn =
-      pkg: env: name:
+      {
+        pkg,
+        env,
+        name,
+      }:
       pkgs.writeShellScriptBin name ''
         export ${lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "${k}=${v}") env)}
         exec ${pkg}/bin/${name} "$@"
       '';
     description = "Wrap a package binary with environment variables";
     tests."wraps with PATH" = {
-      args = {
+      args.a = {
         pkg = pkgs.hello;
         env = {
           MY_VAR = "test";
@@ -72,14 +76,26 @@
     greeting-nix = config.lib.writeGreeting "Nix";
 
     # Use lib to create scripts
-    say-hello = config.lib.mkScript "say-hello" ''
-      echo "Hello from nlib!"
-    '';
-    list-files = config.lib.mkScript "list-files" ''
-      ls -la "$@"
-    '';
+    say-hello = config.lib.mkScript {
+      name = "say-hello";
+      script = ''
+        echo "Hello from nlib!"
+      '';
+    };
+    list-files = config.lib.mkScript {
+      name = "list-files";
+      script = ''
+        ls -la "$@"
+      '';
+    };
 
     # Use lib to wrap packages with environment
-    hello-custom = config.lib.wrapWithEnv pkgs.hello { GREETING = "Bonjour"; } "hello";
+    hello-custom = config.lib.wrapWithEnv {
+      pkg = pkgs.hello;
+      env = {
+        GREETING = "Bonjour";
+      };
+      name = "hello";
+    };
   };
 }

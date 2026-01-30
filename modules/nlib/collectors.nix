@@ -26,6 +26,24 @@
       lib.foldl' (acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._libs or { })) { } (
         lib.attrNames (cfg.flake.homeConfigurations or { })
       );
+
+    darwin =
+      cfg:
+      lib.foldl' (
+        acc: name: acc // (cfg.flake.darwinConfigurations.${name}.config.nlib._libs or { })
+      ) { } (lib.attrNames (cfg.flake.darwinConfigurations or { }));
+
+    vim =
+      cfg:
+      lib.foldl' (
+        acc: name: acc // (cfg.flake.nixvimConfigurations.${name}.config.nlib._libs or { })
+      ) { } (lib.attrNames (cfg.flake.nixvimConfigurations or { }));
+
+    system =
+      cfg:
+      lib.foldl' (acc: name: acc // (cfg.flake.systemConfigs.${name}.config.nlib._libs or { })) { } (
+        lib.attrNames (cfg.flake.systemConfigs or { })
+      );
   };
 
   config.nlib.metaCollectors = {
@@ -40,5 +58,23 @@
       lib.foldl' (
         acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._libsMeta or { })
       ) { } (lib.attrNames (cfg.flake.homeConfigurations or { }));
+
+    darwin =
+      cfg:
+      lib.foldl' (
+        acc: name: acc // (cfg.flake.darwinConfigurations.${name}.config.nlib._libsMeta or { })
+      ) { } (lib.attrNames (cfg.flake.darwinConfigurations or { }));
+
+    vim =
+      cfg:
+      lib.foldl' (
+        acc: name: acc // (cfg.flake.nixvimConfigurations.${name}.config.nlib._libsMeta or { })
+      ) { } (lib.attrNames (cfg.flake.nixvimConfigurations or { }));
+
+    system =
+      cfg:
+      lib.foldl' (acc: name: acc // (cfg.flake.systemConfigs.${name}.config.nlib._libsMeta or { })) { } (
+        lib.attrNames (cfg.flake.systemConfigs or { })
+      );
   };
 }
