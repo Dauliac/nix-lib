@@ -71,6 +71,10 @@ in
 
               # Home-manager specific libs
               ./home-manager.nix
+
+              # Nixvim inside home-manager (no separate nlib adapter needed)
+              # The home-manager nlib adapter handles nixvim libs too
+              nixvim.homeManagerModules.nixvim
             ];
 
             home.stateVersion = "24.05";

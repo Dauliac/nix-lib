@@ -15,6 +15,12 @@
 #
 # The plain functions are auto-populated to config.nlib.fns.<name>
 #
+# Nested module propagation:
+#   When NixOS imports home-manager, home-manager libs are available at:
+#     config.nlib.fns.home.<libname>
+#   When home-manager imports nixvim, nixvim libs are available at:
+#     config.nlib.fns.vim.<libname>
+#
 { lib }:
 let
   libDefTypeModule = import ./libDefType.nix { inherit lib; };
@@ -28,6 +34,75 @@ let
     system-manager = "system";
     flake = "lib";
   };
+
+  # Define which nested systems each adapter should look for
+  # Supports deep nesting: NixOS -> home-manager -> nixvim
+  nestedSystems = {
+    nixos = [
+      {
+        name = "home";
+        path = [
+          "home-manager"
+          "users"
+        ];
+        multi = true; # Multiple users
+      }
+      {
+        # nixvim nested inside home-manager users
+        name = "vim";
+        path = [
+          "home-manager"
+          "users"
+        ];
+        multi = true;
+        # Deep path: go into each user, then programs.nixvim
+        nestedPath = [
+          "programs"
+          "nixvim"
+        ];
+      }
+    ];
+    home-manager = [
+      {
+        name = "vim";
+        path = [
+          "programs"
+          "nixvim"
+        ];
+        multi = false;
+      }
+    ];
+    nix-darwin = [
+      {
+        name = "home";
+        path = [
+          "home-manager"
+          "users"
+        ];
+        multi = true;
+      }
+      {
+        # nixvim nested inside home-manager users
+        name = "vim";
+        path = [
+          "home-manager"
+          "users"
+        ];
+        multi = true;
+        nestedPath = [
+          "programs"
+          "nixvim"
+        ];
+      }
+    ];
+    system-manager = [
+      # system-manager can have home-manager-like user configs
+      # Add more nested systems here as needed
+    ];
+    nixvim = [
+      # nixvim doesn't typically nest other module systems
+    ];
+  };
 in
 {
   name,
@@ -37,6 +112,7 @@ in
 {
   config,
   lib,
+  options,
   ...
 }:
 let
@@ -77,6 +153,61 @@ let
   allLibs = if cfg.enable then unflattenFns (extractFnsFlat flatLibDefs) else { };
   # Use config.nlib.fns for resolved functions (includes overrides)
   allMeta = if cfg.enable then libDefsToMeta flatLibDefs cfg.fns else { };
+
+  # Extract libs from nested module systems
+  # e.g., home-manager users in NixOS, nixvim in home-manager
+  nestedSystemsForAdapter = nestedSystems.${name} or [ ];
+
+  extractNestedLibs =
+    let
+      extractFromNested =
+        nested:
+        let
+          # Check if the path exists in options (not config, to avoid infinite recursion)
+          pathExists = lib.hasAttrByPath nested.path options;
+          nestedConfig = lib.attrByPath nested.path { } config;
+          # Support deep nesting: nestedPath goes inside each multi instance
+          hasNestedPath = nested ? nestedPath && nested.nestedPath != [ ];
+        in
+        if !pathExists then
+          { }
+        else if nested.multi or false then
+          # Multiple instances (e.g., home-manager.users.<name>)
+          lib.foldl' (
+            acc: instanceName:
+            let
+              instance = nestedConfig.${instanceName} or { };
+              # If nestedPath is specified, go deeper (e.g., users.<name>.programs.nixvim)
+              target =
+                if hasNestedPath then lib.attrByPath nested.nestedPath { } instance else instance;
+              libs = target.nlib._libs or { };
+            in
+            acc // libs
+          ) { } (lib.attrNames nestedConfig)
+        else
+          # Single instance (e.g., programs.nixvim)
+          let
+            target =
+              if hasNestedPath then lib.attrByPath nested.nestedPath { } nestedConfig else nestedConfig;
+          in
+          target.nlib._libs or { };
+
+      # Collect libs from all nested systems, namespaced
+      # Merge libs into existing namespace if it already exists
+      collectedNested = lib.foldl' (
+        acc: nested:
+        let
+          libs = extractFromNested nested;
+          existing = acc.${nested.name} or { };
+        in
+        if libs == { } then acc else acc // { ${nested.name} = existing // libs; }
+      ) { } nestedSystemsForAdapter;
+    in
+    collectedNested;
+
+  # Merge own libs with nested libs
+  nestedLibs = if cfg.enable then extractNestedLibs else { };
+  mergedLibs = allLibs // nestedLibs;
 in
 {
   imports = [ ../_all.nix ];
@@ -118,10 +249,12 @@ in
   };
 
   config = {
-    # Auto-populate nlib.fns with extracted functions
-    nlib.fns = allLibs;
+    # Auto-populate nlib.fns with extracted functions + nested system libs
+    # Nested libs are namespaced: nlib.fns.home.* for home-manager, nlib.fns.vim.* for nixvim
+    nlib.fns = mergedLibs;
 
     nlib.namespace = lib.mkDefault namespace;
+    # Only export own libs (not nested) for collection at flake level
     nlib._libs = allLibs;
     nlib._libsMeta = allMeta;
   };

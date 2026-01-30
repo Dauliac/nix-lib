@@ -81,6 +81,44 @@
   };
 
   # ============================================================
+  # Vim libs (when nixvim is used inside home-manager)
+  # These get propagated up to NixOS at nlib.fns.vim.*
+  # ============================================================
+  nlib.lib.vim.mkKeymap = {
+    type = lib.types.functionTo lib.types.attrs;
+    fn =
+      {
+        mode,
+        key,
+        action,
+      }:
+      {
+        keymaps = [
+          {
+            inherit mode key action;
+          }
+        ];
+      };
+    description = "Create a nixvim keymap";
+    tests."creates normal mode keymap" = {
+      args.a = {
+        mode = "n";
+        key = "<leader>f";
+        action = ":Telescope find_files<CR>";
+      };
+      expected = {
+        keymaps = [
+          {
+            mode = "n";
+            key = "<leader>f";
+            action = ":Telescope find_files<CR>";
+          }
+        ];
+      };
+    };
+  };
+
+  # ============================================================
   # Usage Example (in a separate module imported after this one):
   # ============================================================
   #
@@ -89,6 +127,9 @@
   #     (config.nlib.fns.mkAlias { name = "ll"; command = "ls -la"; })
   #     (config.nlib.fns.mkGitConfig { name = "User"; email = "user@example.com"; })
   #     (config.nlib.fns.enableProgram "direnv")
+  #
+  #     # Vim libs (when nixvim is configured)
+  #     (config.nlib.fns.vim.mkKeymap { mode = "n"; key = "<leader>f"; action = ":Telescope<CR>"; })
   #   ];
   # }
 }
