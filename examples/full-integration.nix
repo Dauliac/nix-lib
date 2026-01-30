@@ -46,6 +46,8 @@ in
     modules = [
       # nlib NixOS adapter
       nlib.nixosModules.default
+      # Optional: enables config.lib.* shorthand (alias for config.nlib.fns.*)
+      nlib.nixosModules.libShorthand
 
       # NixOS-specific libs
       ./nixos.nix

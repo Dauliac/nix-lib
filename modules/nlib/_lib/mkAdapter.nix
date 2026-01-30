@@ -208,6 +208,7 @@ let
   # Merge own libs with nested libs
   nestedLibs = if cfg.enable then extractNestedLibs else { };
   mergedLibs = allLibs // nestedLibs;
+
 in
 {
   imports = [ ../_all.nix ];
@@ -241,7 +242,7 @@ in
     '';
   };
 
-  # Output functions at nlib.fns (not lib, which conflicts with NixOS built-in)
+  # Output functions at nlib.fns
   options.nlib.fns = lib.mkOption {
     type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
