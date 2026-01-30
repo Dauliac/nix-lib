@@ -12,30 +12,23 @@ Writing Nix libraries typically means:
 
 ## The Solution: Lib Modules Pattern
 
-Instead of defining functions separately from their specifications, define them as **config values** that bundle everything together:
+Define functions as **config values** that bundle everything together:
 
 ```nix
-# Define at nlib.lib.<name> with full metadata
 nlib.lib.double = {
   type = lib.types.functionTo lib.types.int;
   fn = x: x * 2;
   description = "Double a number";
-  tests."doubles 5" = {
-    args.x = 5;
-    expected = 10;
-  };
+  tests."doubles 5" = { args.x = 5; expected = 10; };
 };
-
-# Use via lib.flake.<name> (plain function)
-result = config.lib.flake.double 5;  # => 10
 ```
 
 This gives you:
 - **Type safety** - explicit Nix types for your functions
-- **Built-in testing** - tests live with the code, impossible to forget
-- **Documentation** - descriptions and examples in one place
+- **Built-in testing** - tests live with the code
+- **Documentation** - descriptions in one place
 - **Composition** - use the NixOS module system to combine libraries
-- **LSP support** - proper option types enable autocomplete and hover info
+- **Nested propagation** - libs from nested modules (home-manager in NixOS) are accessible in parent scope
 
 ## Quick Start
 
@@ -49,121 +42,182 @@ This gives you:
     inputs.nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.nlib.flakeModules.default ];
 
-      # Define pure libs at nlib.lib.<name>
       nlib.lib.add = {
-        type = lib.types.functionTo (lib.types.functionTo lib.types.int);
-        fn = a: b: a + b;
+        type = lib.types.functionTo lib.types.int;
+        fn = { a, b }: a + b;
         description = "Add two integers";
-        tests."adds 2 and 3" = {
-          args = { a = 2; b = 3; };
-          expected = 5;
-        };
-      };
-
-      # Per-system libs (depend on pkgs)
-      perSystem = { pkgs, lib, config, ... }: {
-        # Define at nlib.lib.<name>
-        nlib.lib.writeGreeting = {
-          type = lib.types.functionTo lib.types.package;
-          fn = name: pkgs.writeText "greeting-${name}" "Hello, ${name}!";
-          description = "Create a greeting file";
-          tests."greets Alice" = {
-            args.name = "Alice";
-            expected = "greeting-Alice";
-          };
-        };
-
-        # Use via config.lib.<name>
-        packages.greeting = config.lib.writeGreeting "World";
+        tests."adds 2 and 3" = { args.x = { a = 2; b = 3; }; expected = 5; };
       };
     };
 }
 ```
 
-**API Pattern:**
-- **Define** at `nlib.lib.<name>` with `{ type, fn, description, tests }`
-- **Use** via `lib.<namespace>.<name>` (plain function)
-
-Your functions are available at:
-- `flake.lib.flake.<name>` - pure flake libs
-- `legacyPackages.${system}.nlib.<name>` - per-system libs
-
-### With NixOS, home-manager, or other module systems
+### With NixOS
 
 ```nix
 { config, lib, ... }:
 {
-  imports = [ nlib.nixosModules.default ];
+  imports = [
+    nlib.nixosModules.default
+    nlib.nixosModules.libShorthand  # enables config.lib.* shorthand
+  ];
 
-  nlib.enable = true;
-
-  # Define at nlib.lib.<name>
   nlib.lib.triple = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * 3;
     description = "Triple a number";
-    tests."triples 4" = {
-      args.x = 4;
-      expected = 12;
-    };
+    tests."triples 4" = { args.x = 4; expected = 12; };
   };
 
-  # Use via config.lib.<name>
+  # Use the function
   environment.etc."tripled".text = toString (config.lib.triple 7);  # => "21"
 }
 ```
 
-Available modules:
-- `nlib.nixosModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.nixos.*`
-- `nlib.homeModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.home.*`
-- `nlib.nixvimModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.vim.*`
-- `nlib.darwinModules.default` - define at `nlib.lib.*`, use at `config.lib.*`, exports to `flake.lib.darwin.*`
+## API Reference
 
-## Output Structure
+### Defining Libraries
 
-Following the [dendritic pattern](https://github.com/mightyiam/dendritic), libs are organized by namespace:
-
-```
-# Flake outputs (plain functions)
-flake.lib.flake.add            # Pure flake libs (from nlib.lib.*)
-flake.lib.nixos.helper         # NixOS libs (from nixosConfigurations)
-flake.lib.home.util            # Home-manager libs
-flake.lib.vim.mapping          # Nixvim libs
-flake.lib.darwin.service       # Nix-darwin libs
-legacyPackages.x86_64-linux.nlib.writeGreeting  # Per-system libs
-
-# Within module scope (plain functions)
-config.lib.flake.<name>        # In flake-parts scope
-config.lib.<name>              # In NixOS/home-manager/darwin/nixvim scope
-```
-
-## Running Tests
-
-Configure the test backend and run with nix-unit:
+Define libs at `nlib.lib.<name>` (supports nested namespaces like `nlib.lib.utils.helper`):
 
 ```nix
-nlib.testing = {
-  backend = "nix-unit";  # also: "nixt", "nixtest", "runTests"
-  reporter = "junit";    # for CI integration
-  outputPath = "test-results.xml";
+nlib.lib.myFunc = {
+  type = lib.types.functionTo lib.types.int;  # Required: function signature
+  fn = x: x * 2;                               # Required: implementation
+  description = "What it does";                # Required: documentation
+  tests."test name" = {                        # Optional: test cases
+    args.x = 5;
+    expected = 10;
+  };
+  visible = true;                              # Optional: public (true) or private (false)
 };
 ```
 
-```bash
-nix-unit --flake .#tests.lib
+### Lib Output Layers
+
+Libs defined in different module systems are available at different paths. This table shows where libs are accessible depending on where they are defined:
+
+#### Flake-Level Libs (pure, no pkgs)
+
+| Defined in | Module to import | Access within module | Flake output |
+|------------|------------------|---------------------|--------------|
+| flake-parts `nlib.lib.*` | `flakeModules.default` | `config.lib.flake.<name>` | `flake.lib.flake.<name>` |
+| perSystem `nlib.lib.*` | `flakeModules.default` | `config.lib.<name>` | `legacyPackages.<system>.nlib.<name>` |
+
+#### System Configuration Libs
+
+| Defined in | Module to import | Access within module | With libShorthand | Flake output |
+|------------|------------------|---------------------|-------------------|--------------|
+| NixOS `nlib.lib.*` | `nixosModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.nixos.<name>` |
+| home-manager `nlib.lib.*` | `homeModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` (built-in) | `flake.lib.home.<name>` |
+| nix-darwin `nlib.lib.*` | `darwinModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.darwin.<name>` |
+| nixvim `nlib.lib.*` | `nixvimModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.vim.<name>` |
+| system-manager `nlib.lib.*` | `systemManagerModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.system.<name>` |
+
+### Nested Module Propagation
+
+When a parent module imports a nested module system, the nested libs are automatically accessible in the parent scope under a namespace prefix.
+
+#### Nested Libs Access Table
+
+| Parent module | Nested module | Libs defined in nested | Access in parent |
+|---------------|---------------|------------------------|------------------|
+| NixOS | home-manager | `nlib.lib.foo` | `config.nlib.fns.home.foo` or `config.lib.home.foo` |
+| NixOS | home-manager → nixvim | `nlib.lib.bar` | `config.nlib.fns.home.vim.bar` or `config.lib.home.vim.bar` |
+| nix-darwin | home-manager | `nlib.lib.foo` | `config.nlib.fns.home.foo` or `config.lib.home.foo` |
+| nix-darwin | home-manager → nixvim | `nlib.lib.bar` | `config.nlib.fns.home.vim.bar` or `config.lib.home.vim.bar` |
+| home-manager | nixvim | `nlib.lib.bar` | `config.nlib.fns.vim.bar` or `config.lib.vim.bar` |
+
+#### Namespace Prefixes
+
+| Module system | Namespace prefix |
+|---------------|------------------|
+| home-manager | `home` |
+| nixvim | `vim` |
+| nix-darwin | `darwin` |
+| system-manager | `system` |
+
+#### Example: NixOS with nested home-manager and nixvim
+
+```nix
+# In NixOS config (with home-manager and nixvim nested):
+config.lib.enableService "openssh"              # NixOS lib
+config.lib.home.mkAlias { name = "ll"; ... }    # home-manager lib (from nested)
+config.lib.home.vim.mkKeymap { ... }            # nixvim lib (from nested inside home-manager)
+```
+
+### Flake Outputs Summary
+
+All libs are collected and exported at the flake level under `flake.lib.<namespace>`:
+
+| Namespace | Source | Description |
+|-----------|--------|-------------|
+| `flake.lib.flake.*` | `nlib.lib.*` in flake-parts | Pure flake-level libs |
+| `flake.lib.nixos.*` | `nixosConfigurations.*.nlib.lib.*` | NixOS configuration libs |
+| `flake.lib.home.*` | `homeConfigurations.*.nlib.lib.*` | Standalone home-manager libs |
+| `flake.lib.darwin.*` | `darwinConfigurations.*.nlib.lib.*` | nix-darwin libs |
+| `flake.lib.vim.*` | `nixvimConfigurations.*.nlib.lib.*` | Standalone nixvim libs |
+| `flake.lib.system.*` | `systemConfigs.*.nlib.lib.*` | system-manager libs |
+
+## Available Modules
+
+### Adapter Modules
+
+Import these to enable nlib in each module system:
+
+| Module | Import path | Purpose |
+|--------|-------------|---------|
+| `flakeModules.default` | `inputs.nlib.flakeModules.default` | flake-parts integration |
+| `nixosModules.default` | `nlib.nixosModules.default` | NixOS integration |
+| `homeModules.default` | `nlib.homeModules.default` | home-manager integration |
+| `darwinModules.default` | `nlib.darwinModules.default` | nix-darwin integration |
+| `nixvimModules.default` | `nlib.nixvimModules.default` | nixvim integration |
+| `systemManagerModules.default` | `nlib.systemManagerModules.default` | system-manager integration |
+
+### Shorthand Modules (optional)
+
+Import these alongside the adapter to enable `config.lib.*` shorthand (merges `nlib.fns` into existing `config.lib`):
+
+| Module | Import path | Effect |
+|--------|-------------|--------|
+| `nixosModules.libShorthand` | `nlib.nixosModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
+| `darwinModules.libShorthand` | `nlib.darwinModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
+| `nixvimModules.libShorthand` | `nlib.nixvimModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
+| `systemManagerModules.libShorthand` | `nlib.systemManagerModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
+
+**Note:** home-manager already has `config.lib`, so nlib functions merge into it automatically (no separate shorthand module needed).
+
+```nix
+# Example: NixOS with libShorthand
+imports = [ nlib.nixosModules.default nlib.nixosModules.libShorthand ];
+
+# Now you can use:
+config.lib.myFunc       # instead of config.nlib.fns.myFunc
+config.lib.home.foo     # nested home-manager libs also available
 ```
 
 ## Test Formats
 
-Simple expected value:
+### Simple expected value
+
 ```nix
 tests."test name" = {
-  args.x = 5;
-  expected = 10;
+  args.x = 5;       # Argument passed to fn
+  expected = 10;    # Expected return value
 };
 ```
 
-Multiple assertions (lazily evaluated):
+### Multiple arguments
+
+```nix
+tests."test name" = {
+  args.x = { a = 2; b = 3; };  # For fn = { a, b }: a + b
+  expected = 5;
+};
+```
+
+### Multiple assertions
+
 ```nix
 tests."test name" = {
   args.x = 5;
@@ -175,31 +229,100 @@ tests."test name" = {
 };
 ```
 
-## Lib Definition Options
+## Running Tests
 
-Each lib definition accepts:
+Configure testing backend:
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `type` | Nix type | Yes | Function type (e.g., `lib.types.functionTo lib.types.int`) |
-| `fn` | function | Yes | The function implementation |
-| `description` | string | Yes | What the function does |
-| `tests` | attrset | No | Test cases (default: `{}`) |
-| `example` | string | No | Optional example usage |
-| `visible` | bool | No | Show in documentation (default: `true`) |
+```nix
+nlib.testing = {
+  backend = "nix-unit";
+  reporter = "junit";
+  outputPath = "test-results.xml";
+};
+```
 
-## Why This Pattern?
+Run tests:
 
-Traditional Nix libraries separate concerns: code here, tests there, docs somewhere else. The Lib Modules Pattern keeps everything together. When you write a function, you write its type, its tests, and its documentation in the same place.
+```bash
+# From tests directory
+nix flake check
+nix run .#build-all
 
-This makes it:
-- **Harder to skip tests** - they're part of the function definition
-- **Easier to understand** - everything about a function is in one place
-- **Simpler to maintain** - change the function, update the test right there
-- **Ready to compose** - modules merge naturally with the NixOS module system
-- **LSP friendly** - proper types enable IDE features
+# Or directly with nix-unit
+nix-unit --flake .#tests.lib
+```
+
+## Complete Example
+
+```nix
+# flake.nix
+{
+  inputs = {
+    nlib.url = "github:Dauliac/nlib";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+  };
+
+  outputs = { self, nlib, nixpkgs, home-manager, ... }:
+    nlib.inputs.flake-parts.lib.mkFlake { inherit (self) inputs; } {
+      imports = [ nlib.flakeModules.default ];
+
+      systems = [ "x86_64-linux" ];
+
+      # Flake-level libs
+      nlib.lib.greet = {
+        type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.str;
+        fn = name: "Hello, ${name}!";
+        description = "Generate a greeting";
+        tests."greets world" = { args.name = "World"; expected = "Hello, World!"; };
+      };
+
+      # NixOS configuration
+      flake.nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          nlib.nixosModules.default
+          nlib.nixosModules.libShorthand
+          home-manager.nixosModules.home-manager
+          ({ config, lib, ... }: {
+            # Define NixOS-specific lib
+            nlib.lib.openPort = {
+              type = lib.types.functionTo lib.types.attrs;
+              fn = port: { networking.firewall.allowedTCPPorts = [ port ]; };
+              description = "Open a firewall port";
+              tests."opens 80" = { args.port = 80; expected = { networking.firewall.allowedTCPPorts = [ 80 ]; }; };
+            };
+
+            # Use it
+            imports = [ (config.lib.openPort 443) ];
+
+            # Home-manager with nlib
+            home-manager.users.myuser = { ... }: {
+              imports = [ nlib.homeModules.default ];
+
+              nlib.lib.mkAlias = {
+                type = lib.types.functionTo lib.types.attrs;
+                fn = { name, cmd }: { programs.bash.shellAliases.${name} = cmd; };
+                description = "Create shell alias";
+                tests."creates ll" = {
+                  args.x = { name = "ll"; cmd = "ls -la"; };
+                  expected = { programs.bash.shellAliases.ll = "ls -la"; };
+                };
+              };
+
+              home.stateVersion = "24.05";
+            };
+
+            # Access home-manager libs from NixOS!
+            # config.lib.home.mkAlias { name = "ll"; cmd = "ls -la"; }
+          })
+        ];
+      };
+    };
+}
+```
 
 ## See Also
 
-- `tests/integration/` - Complete example with flake-parts, NixOS, and per-system libs
-- `tests/` - nlib's own tests using the pattern
+- `examples/` - Individual examples for each module system
+- `tests/` - Full integration tests
