@@ -112,18 +112,16 @@ All libs are collected and exported at the flake level under `flake.lib.<namespa
 
 ## Available Modules
 
-### Adapter Modules
+Import the adapter for your module system. Libs are automatically available at `config.lib.*`:
 
-Import these to enable nlib in each module system:
-
-| Module | Import path | Purpose |
-|--------|-------------|---------|
-| `flakeModules.default` | `inputs.nlib.flakeModules.default` | flake-parts integration |
-| `nixosModules.default` | `nlib.nixosModules.default` | NixOS integration |
-| `homeModules.default` | `nlib.homeModules.default` | home-manager integration |
-| `darwinModules.default` | `nlib.darwinModules.default` | nix-darwin integration |
-| `nixvimModules.default` | `nlib.nixvimModules.default` | nixvim integration |
-| `systemManagerModules.default` | `nlib.systemManagerModules.default` | system-manager integration |
+| Module | Import path |
+|--------|-------------|
+| `flakeModules.default` | `inputs.nlib.flakeModules.default` |
+| `nixosModules.default` | `nlib.nixosModules.default` |
+| `homeModules.default` | `nlib.homeModules.default` |
+| `darwinModules.default` | `nlib.darwinModules.default` |
+| `nixvimModules.default` | `nlib.nixvimModules.default` |
+| `systemManagerModules.default` | `nlib.systemManagerModules.default` |
 
 ## Test Formats
 
