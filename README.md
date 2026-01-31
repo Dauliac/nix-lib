@@ -53,9 +53,44 @@ nlib.lib.myFunc = {
 };
 ```
 
+### Lib Flow
+
+```mermaid
+flowchart TB
+    subgraph Define["Define (nlib.lib.*)"]
+        D1[type + fn + description + tests]
+    end
+
+    subgraph Use["Use (config.lib.*)"]
+        U1[NixOS config.lib.foo]
+        U2[home-manager config.lib.bar]
+        U3[nixvim config.lib.baz]
+    end
+
+    subgraph Propagate["Nested Propagation"]
+        P1[NixOS config.lib.home.*]
+        P2[NixOS config.lib.home.vim.*]
+    end
+
+    subgraph Export["Flake Export (flake.lib.*)"]
+        E1[flake.lib.nixos.*]
+        E2[flake.lib.home.*]
+        E3[flake.lib.vim.*]
+    end
+
+    D1 --> U1
+    D1 --> U2
+    D1 --> U3
+    U2 --> P1
+    U3 --> P2
+    U1 --> E1
+    U2 --> E2
+    U3 --> E3
+```
+
 ### Lib Output Layers
 
-Libs defined in different module systems are available at different paths. This table shows where libs are accessible depending on where they are defined:
+Libs defined in different module systems are available at different paths:
 
 #### Flake-Level Libs (pure, no pkgs)
 
@@ -77,6 +112,25 @@ Libs defined in different module systems are available at different paths. This 
 ### Nested Module Propagation
 
 When a parent module imports a nested module system, the nested libs are automatically accessible in the parent scope under a namespace prefix.
+
+```mermaid
+flowchart LR
+    subgraph NixOS
+        N[config.lib.*]
+    end
+
+    subgraph home-manager
+        H[nlib.lib.*]
+    end
+
+    subgraph nixvim
+        V[nlib.lib.*]
+    end
+
+    H -->|home.*| N
+    V -->|vim.*| H
+    V -->|home.vim.*| N
+```
 
 #### Nested Libs Access Table
 
