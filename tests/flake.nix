@@ -95,6 +95,7 @@
                 lib-darwin = mkLibCheck pkgs "darwin" flakeLib.darwin;
                 lib-vim = mkLibCheck pkgs "vim" flakeLib.vim;
                 lib-system = mkLibCheck pkgs "system" flakeLib.system;
+                lib-wrappers = mkLibCheck pkgs "wrappers" flakeLib.wrappers;
                 unit-tests = unitTestsCheck;
               };
 

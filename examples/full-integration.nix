@@ -8,6 +8,7 @@
 # 5. Standalone nixvim configuration
 # 6. Darwin configuration
 # 7. System-manager configuration (standalone + NixOS integration)
+# 8. Wrapper configuration (nix-wrapper-modules style)
 #
 # Import this single file in your test flake to get all examples.
 #
@@ -226,6 +227,21 @@ in
 
       # Required system-manager options
       { nixpkgs.hostPlatform = "x86_64-linux"; }
+    ];
+  };
+
+  # ============================================================
+  # 8. Wrapper configuration (nix-wrapper-modules style)
+  # ============================================================
+  # nix-wrapper-modules uses lib.evalModules like system-manager
+  # This demonstrates nlib integration for wrapper-based module systems
+  flake.wrapperConfigurations.test = nixpkgs.lib.evalModules {
+    modules = [
+      # nlib wrapper adapter
+      nlib.wrapperModules.default
+
+      # Wrapper-specific libs
+      ./wrapper-modules.nix
     ];
   };
 }
