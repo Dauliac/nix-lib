@@ -14,34 +14,35 @@
     description = "Functions to collect lib metadata from other sources.";
   };
 
+  # Collectors use _fns which includes both own libs and nested propagated libs
   config.nlib.collectors = {
     nixos =
       cfg:
       lib.foldl' (
-        acc: name: acc // (cfg.flake.nixosConfigurations.${name}.config.nlib._libs or { })
+        acc: name: acc // (cfg.flake.nixosConfigurations.${name}.config.nlib._fns or { })
       ) { } (lib.attrNames (cfg.flake.nixosConfigurations or { }));
 
     home =
       cfg:
-      lib.foldl' (acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._libs or { })) { } (
+      lib.foldl' (acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._fns or { })) { } (
         lib.attrNames (cfg.flake.homeConfigurations or { })
       );
 
     darwin =
       cfg:
       lib.foldl' (
-        acc: name: acc // (cfg.flake.darwinConfigurations.${name}.config.nlib._libs or { })
+        acc: name: acc // (cfg.flake.darwinConfigurations.${name}.config.nlib._fns or { })
       ) { } (lib.attrNames (cfg.flake.darwinConfigurations or { }));
 
     vim =
       cfg:
       lib.foldl' (
-        acc: name: acc // (cfg.flake.nixvimConfigurations.${name}.config.nlib._libs or { })
+        acc: name: acc // (cfg.flake.nixvimConfigurations.${name}.config.nlib._fns or { })
       ) { } (lib.attrNames (cfg.flake.nixvimConfigurations or { }));
 
     system =
       cfg:
-      lib.foldl' (acc: name: acc // (cfg.flake.systemConfigs.${name}.config.nlib._libs or { })) { } (
+      lib.foldl' (acc: name: acc // (cfg.flake.systemConfigs.${name}.config.nlib._fns or { })) { } (
         lib.attrNames (cfg.flake.systemConfigs or { })
       );
   };
