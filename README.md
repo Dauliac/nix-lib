@@ -32,47 +32,7 @@ This gives you:
 
 ## Quick Start
 
-### With flake-parts
-
-```nix
-{
-  inputs.nlib.url = "github:Dauliac/nlib";
-
-  outputs = inputs:
-    inputs.nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [ inputs.nlib.flakeModules.default ];
-
-      nlib.lib.add = {
-        type = lib.types.functionTo lib.types.int;
-        fn = { a, b }: a + b;
-        description = "Add two integers";
-        tests."adds 2 and 3" = { args.x = { a = 2; b = 3; }; expected = 5; };
-      };
-    };
-}
-```
-
-### With NixOS
-
-```nix
-{ config, lib, ... }:
-{
-  imports = [
-    nlib.nixosModules.default
-    nlib.nixosModules.libShorthand  # enables config.lib.* shorthand
-  ];
-
-  nlib.lib.triple = {
-    type = lib.types.functionTo lib.types.int;
-    fn = x: x * 3;
-    description = "Triple a number";
-    tests."triples 4" = { args.x = 4; expected = 12; };
-  };
-
-  # Use the function
-  environment.etc."tripled".text = toString (config.lib.triple 7);  # => "21"
-}
-```
+See `examples/` for complete working examples of each module system.
 
 ## API Reference
 
@@ -137,15 +97,6 @@ When a parent module imports a nested module system, the nested libs are automat
 | nix-darwin | `darwin` |
 | system-manager | `system` |
 
-#### Example: NixOS with nested home-manager and nixvim
-
-```nix
-# In NixOS config (with home-manager and nixvim nested):
-config.lib.enableService "openssh"              # NixOS lib
-config.lib.home.mkAlias { name = "ll"; ... }    # home-manager lib (from nested)
-config.lib.home.vim.mkKeymap { ... }            # nixvim lib (from nested inside home-manager)
-```
-
 ### Flake Outputs Summary
 
 All libs are collected and exported at the flake level under `flake.lib.<namespace>`:
@@ -186,15 +137,6 @@ Import these alongside the adapter to enable `config.lib.*` shorthand (merges `n
 | `systemManagerModules.libShorthand` | `nlib.systemManagerModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
 
 **Note:** home-manager already has `config.lib`, so nlib functions merge into it automatically (no separate shorthand module needed).
-
-```nix
-# Example: NixOS with libShorthand
-imports = [ nlib.nixosModules.default nlib.nixosModules.libShorthand ];
-
-# Now you can use:
-config.lib.myFunc       # instead of config.nlib.fns.myFunc
-config.lib.home.foo     # nested home-manager libs also available
-```
 
 ## Test Formats
 
@@ -250,76 +192,6 @@ nix run .#build-all
 
 # Or directly with nix-unit
 nix-unit --flake .#tests.lib
-```
-
-## Complete Example
-
-```nix
-# flake.nix
-{
-  inputs = {
-    nlib.url = "github:Dauliac/nlib";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    home-manager.url = "github:nix-community/home-manager";
-  };
-
-  outputs = { self, nlib, nixpkgs, home-manager, ... }:
-    nlib.inputs.flake-parts.lib.mkFlake { inherit (self) inputs; } {
-      imports = [ nlib.flakeModules.default ];
-
-      systems = [ "x86_64-linux" ];
-
-      # Flake-level libs
-      nlib.lib.greet = {
-        type = nixpkgs.lib.types.functionTo nixpkgs.lib.types.str;
-        fn = name: "Hello, ${name}!";
-        description = "Generate a greeting";
-        tests."greets world" = { args.name = "World"; expected = "Hello, World!"; };
-      };
-
-      # NixOS configuration
-      flake.nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          nlib.nixosModules.default
-          nlib.nixosModules.libShorthand
-          home-manager.nixosModules.home-manager
-          ({ config, lib, ... }: {
-            # Define NixOS-specific lib
-            nlib.lib.openPort = {
-              type = lib.types.functionTo lib.types.attrs;
-              fn = port: { networking.firewall.allowedTCPPorts = [ port ]; };
-              description = "Open a firewall port";
-              tests."opens 80" = { args.port = 80; expected = { networking.firewall.allowedTCPPorts = [ 80 ]; }; };
-            };
-
-            # Use it
-            imports = [ (config.lib.openPort 443) ];
-
-            # Home-manager with nlib
-            home-manager.users.myuser = { ... }: {
-              imports = [ nlib.homeModules.default ];
-
-              nlib.lib.mkAlias = {
-                type = lib.types.functionTo lib.types.attrs;
-                fn = { name, cmd }: { programs.bash.shellAliases.${name} = cmd; };
-                description = "Create shell alias";
-                tests."creates ll" = {
-                  args.x = { name = "ll"; cmd = "ls -la"; };
-                  expected = { programs.bash.shellAliases.ll = "ls -la"; };
-                };
-              };
-
-              home.stateVersion = "24.05";
-            };
-
-            # Access home-manager libs from NixOS!
-            # config.lib.home.mkAlias { name = "ll"; cmd = "ls -la"; }
-          })
-        ];
-      };
-    };
-}
 ```
 
 ## See Also
