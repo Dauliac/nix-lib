@@ -158,6 +158,7 @@ All libs are collected and exported at the flake level under `flake.lib.<namespa
 | Namespace | Source | Description |
 |-----------|--------|-------------|
 | `flake.lib.flake.*` | `nlib.lib.*` in flake-parts | Pure flake-level libs |
+| `flake.lib.perSystem.*` | `legacyPackages.<system>.nlib.*` | Per-system libs (merged) |
 | `flake.lib.nixos.*` | `nixosConfigurations.*.nlib.lib.*` | NixOS configuration libs |
 | `flake.lib.home.*` | `homeConfigurations.*.nlib.lib.*` | Standalone home-manager libs |
 | `flake.lib.darwin.*` | `darwinConfigurations.*.nlib.lib.*` | nix-darwin libs |
@@ -208,6 +209,70 @@ tests."test name" = {
     { name = "equals 10"; expected = 10; }
   ];
 };
+```
+
+## Custom Module Systems
+
+`mkAdapter` is generic and works with any NixOS-style module system:
+
+```nix
+# Create adapter for your custom module system
+flake.myModules.default = inputs.nlib.outputs.lib.nlib.mkAdapter {
+  name = "my-module-system";
+  namespace = "my";
+};
+
+# Use in your module system
+{ lib, config, ... }: {
+  imports = [ myModules.default ];
+
+  nlib.enable = true;
+  nlib.lib.myHelper = {
+    type = lib.types.functionTo lib.types.attrs;
+    fn = x: { result = x; };
+    description = "Custom helper";
+  };
+
+  # Available at: config.lib.myHelper
+}
+```
+
+### Requirements
+
+- Module system must support NixOS-style modules (`config`, `lib`, `options` args)
+- No domain-specific options required - mkAdapter only sets `nlib.*` and `lib.*`
+
+## Custom Collectors
+
+Collectors aggregate libs from flake outputs into `flake.lib.<namespace>`. Define custom collectors via `nlib.collectorDefs`:
+
+```nix
+# In your flake-parts module
+nlib.collectorDefs.wrappers = {
+  pathType = "flat";                      # "flat" or "perSystem"
+  configPath = [ "wrapperConfigurations" ]; # Path in flake outputs
+  namespace = "wrappers";                 # Output at flake.lib.wrappers.*
+  description = "nix-wrapper-modules libs";
+};
+```
+
+### Path Types
+
+| Type | Description | Collection Path |
+|------|-------------|-----------------|
+| `flat` | Direct configuration set | `flake.<configPath>.<name>.config.nlib._fns` |
+| `perSystem` | Per-system in legacyPackages | `flake.legacyPackages.<system>.<configPath>` |
+
+### Disabling Built-in Collectors
+
+```nix
+nlib.collectorDefs.nixos.enable = false;  # Disable NixOS collection
+```
+
+### Overriding Namespaces
+
+```nix
+nlib.collectorDefs.nixos.namespace = "os";  # flake.lib.os.* instead of flake.lib.nixos.*
 ```
 
 ## See Also

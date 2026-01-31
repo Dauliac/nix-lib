@@ -29,10 +29,12 @@ let
 
   # Collected libs from other module systems (nixos, home, etc.)
   # Uses collectors which get _fns (includes nested propagated libs)
-  collectedLibsByNamespace = lib.mapAttrs (_: collector: collector config) (cfg.collectors or { });
+  # Pass systems for perSystem collectors
+  collectorConfig = config // { systems = config.systems or [ ]; };
+  collectedLibsByNamespace = lib.mapAttrs (_: collector: collector collectorConfig) (cfg.collectors or { });
 
   # Collected metadata for tests (uses metaCollectors which get _libsMeta)
-  collectedMeta = lib.mapAttrs (_: collector: collector config) (cfg.metaCollectors or { });
+  collectedMeta = lib.mapAttrs (_: collector: collector collectorConfig) (cfg.metaCollectors or { });
 
   # For tests, flatten all metadata
   allMetaFlat =
@@ -90,18 +92,12 @@ in
 
     # flake.lib exports:
     # - flake.lib.flake.<name> for pure flake libs
-    # - flake.lib.nixos.<name> for nixos libs
-    # - flake.lib.home.<name> for home-manager libs
+    # - flake.lib.nlib for internal utilities
+    # - flake.lib.<namespace>.<name> for collected libs (from collectorDefs)
     flake.lib = {
       inherit (config.lib) flake;
       nlib = nlibLib;
-      nixos = collectedLibsByNamespace.nixos or { };
-      home = collectedLibsByNamespace.home or { };
-      darwin = collectedLibsByNamespace.darwin or { };
-      vim = collectedLibsByNamespace.vim or { };
-      system = collectedLibsByNamespace.system or { };
-    }
-    // collectedLibsByNamespace;
+    } // collectedLibsByNamespace;
 
     flake.tests.${cfg.namespace} = tests;
 
