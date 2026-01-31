@@ -66,13 +66,13 @@ Libs defined in different module systems are available at different paths. This 
 
 #### System Configuration Libs
 
-| Defined in | Module to import | Access within module | With libShorthand | Flake output |
-|------------|------------------|---------------------|-------------------|--------------|
-| NixOS `nlib.lib.*` | `nixosModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.nixos.<name>` |
-| home-manager `nlib.lib.*` | `homeModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` (built-in) | `flake.lib.home.<name>` |
-| nix-darwin `nlib.lib.*` | `darwinModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.darwin.<name>` |
-| nixvim `nlib.lib.*` | `nixvimModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.vim.<name>` |
-| system-manager `nlib.lib.*` | `systemManagerModules.default` | `config.nlib.fns.<name>` | `config.lib.<name>` | `flake.lib.system.<name>` |
+| Defined in | Module to import | Access within module | Flake output |
+|------------|------------------|---------------------|--------------|
+| NixOS `nlib.lib.*` | `nixosModules.default` | `config.lib.<name>` | `flake.lib.nixos.<name>` |
+| home-manager `nlib.lib.*` | `homeModules.default` | `config.lib.<name>` | `flake.lib.home.<name>` |
+| nix-darwin `nlib.lib.*` | `darwinModules.default` | `config.lib.<name>` | `flake.lib.darwin.<name>` |
+| nixvim `nlib.lib.*` | `nixvimModules.default` | `config.lib.<name>` | `flake.lib.vim.<name>` |
+| system-manager `nlib.lib.*` | `systemManagerModules.default` | `config.lib.<name>` | `flake.lib.system.<name>` |
 
 ### Nested Module Propagation
 
@@ -82,11 +82,11 @@ When a parent module imports a nested module system, the nested libs are automat
 
 | Parent module | Nested module | Libs defined in nested | Access in parent |
 |---------------|---------------|------------------------|------------------|
-| NixOS | home-manager | `nlib.lib.foo` | `config.nlib.fns.home.foo` or `config.lib.home.foo` |
-| NixOS | home-manager → nixvim | `nlib.lib.bar` | `config.nlib.fns.home.vim.bar` or `config.lib.home.vim.bar` |
-| nix-darwin | home-manager | `nlib.lib.foo` | `config.nlib.fns.home.foo` or `config.lib.home.foo` |
-| nix-darwin | home-manager → nixvim | `nlib.lib.bar` | `config.nlib.fns.home.vim.bar` or `config.lib.home.vim.bar` |
-| home-manager | nixvim | `nlib.lib.bar` | `config.nlib.fns.vim.bar` or `config.lib.vim.bar` |
+| NixOS | home-manager | `nlib.lib.foo` | `config.lib.home.foo` |
+| NixOS | home-manager → nixvim | `nlib.lib.bar` | `config.lib.home.vim.bar` |
+| nix-darwin | home-manager | `nlib.lib.foo` | `config.lib.home.foo` |
+| nix-darwin | home-manager → nixvim | `nlib.lib.bar` | `config.lib.home.vim.bar` |
+| home-manager | nixvim | `nlib.lib.bar` | `config.lib.vim.bar` |
 
 #### Namespace Prefixes
 
@@ -124,19 +124,6 @@ Import these to enable nlib in each module system:
 | `darwinModules.default` | `nlib.darwinModules.default` | nix-darwin integration |
 | `nixvimModules.default` | `nlib.nixvimModules.default` | nixvim integration |
 | `systemManagerModules.default` | `nlib.systemManagerModules.default` | system-manager integration |
-
-### Shorthand Modules (optional)
-
-Import these alongside the adapter to enable `config.lib.*` shorthand (merges `nlib.fns` into existing `config.lib`):
-
-| Module | Import path | Effect |
-|--------|-------------|--------|
-| `nixosModules.libShorthand` | `nlib.nixosModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
-| `darwinModules.libShorthand` | `nlib.darwinModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
-| `nixvimModules.libShorthand` | `nlib.nixvimModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
-| `systemManagerModules.libShorthand` | `nlib.systemManagerModules.libShorthand` | `config.lib.<name>` → `config.nlib.fns.<name>` |
-
-**Note:** home-manager already has `config.lib`, so nlib functions merge into it automatically (no separate shorthand module needed).
 
 ## Test Formats
 

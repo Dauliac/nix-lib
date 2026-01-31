@@ -13,13 +13,13 @@
 #     tests."doubles 5" = { args.x = 5; expected = 10; };
 #   };
 #
-# The plain functions are auto-populated to config.nlib.fns.<name>
+# Functions are available at config.lib.<name>
 #
 # Nested module propagation:
 #   When NixOS imports home-manager, home-manager libs are available at:
-#     config.nlib.fns.home.<libname>
+#     config.lib.home.<libname>
 #   When home-manager imports nixvim, nixvim libs are available at:
-#     config.nlib.fns.vim.<libname>
+#     config.lib.vim.<libname>
 #
 { lib }:
 let
@@ -151,8 +151,8 @@ let
 
   # Get lib definitions, flatten, extract, unflatten
   allLibs = if cfg.enable then unflattenFns (extractFnsFlat flatLibDefs) else { };
-  # Use config.nlib.fns for resolved functions (includes overrides)
-  allMeta = if cfg.enable then libDefsToMeta flatLibDefs cfg.fns else { };
+  # Use config.nlib._fns for resolved functions (includes overrides)
+  allMeta = if cfg.enable then libDefsToMeta flatLibDefs cfg._fns else { };
 
   # Extract libs from nested module systems
   # e.g., home-manager users in NixOS, nixvim in home-manager
@@ -209,50 +209,68 @@ let
   nestedLibs = if cfg.enable then extractNestedLibs else { };
   mergedLibs = allLibs // nestedLibs;
 
+  # Systems that have options.lib built-in (we just set config.lib, don't declare)
+  # NixOS: nixos/modules/misc/lib.nix
+  # home-manager: modules/lib/default.nix
+  systemsWithBuiltinLib = [ "nixos" "home-manager" ];
+  hasBuiltinLib = builtins.elem name systemsWithBuiltinLib;
+
 in
 {
   imports = [ ../_all.nix ];
 
-  # Define options.nlib.lib for lib definitions
-  # Supports nested namespaces
-  options.nlib.lib = lib.mkOption {
-    type = lib.types.lazyAttrsOf lib.types.unspecified;
-    default = { };
-    description = ''
-      Lib definitions for ${name}. Supports nested namespaces.
+  options = {
+    # Define options.nlib.lib for lib definitions
+    # Supports nested namespaces
+    nlib.lib = lib.mkOption {
+      type = lib.types.lazyAttrsOf lib.types.unspecified;
+      default = { };
+      description = ''
+        Lib definitions for ${name}. Supports nested namespaces.
 
-      Usage:
-      ```nix
-      nlib.lib.myFunc = {
-        type = lib.types.functionTo lib.types.int;
-        fn = x: x * 2;
-        description = "Double a number";
-        tests."doubles 5" = { args.x = 5; expected = 10; };
-      };
+        Usage:
+        ```nix
+        nlib.lib.myFunc = {
+          type = lib.types.functionTo lib.types.int;
+          fn = x: x * 2;
+          description = "Double a number";
+          tests."doubles 5" = { args.x = 5; expected = 10; };
+        };
 
-      # Nested namespace
-      nlib.lib.utils.helper = {
-        type = lib.types.functionTo lib.types.str;
-        fn = x: "helper: " + x;
-        description = "Helper function";
-      };
-      ```
+        # Nested namespace
+        nlib.lib.utils.helper = {
+          type = lib.types.functionTo lib.types.str;
+          fn = x: "helper: " + x;
+          description = "Helper function";
+        };
+        ```
 
-      Functions are available at config.nlib.fns.<path>
-    '';
-  };
+        Functions are available at config.lib.<path>
+      '';
+    };
 
-  # Output functions at nlib.fns
-  options.nlib.fns = lib.mkOption {
-    type = lib.types.lazyAttrsOf lib.types.unspecified;
-    default = { };
-    description = "Lib functions (auto-populated from nlib.lib)";
+    # Internal option for storing functions (used by tests and metadata)
+    nlib._fns = lib.mkOption {
+      type = lib.types.lazyAttrsOf lib.types.unspecified;
+      default = { };
+      internal = true;
+      description = "Internal: Lib functions (auto-populated from nlib.lib)";
+    };
+  } // lib.optionalAttrs (!hasBuiltinLib) {
+    # Declare options.lib for systems that don't have it built-in
+    lib = lib.mkOption {
+      type = lib.types.lazyAttrsOf lib.types.unspecified;
+      default = { };
+      description = "Lib functions merged from nlib";
+    };
   };
 
   config = {
-    # Auto-populate nlib.fns with extracted functions + nested system libs
-    # Nested libs are namespaced: nlib.fns.home.* for home-manager, nlib.fns.vim.* for nixvim
-    nlib.fns = mergedLibs;
+    # Store functions internally for metadata and tests
+    nlib._fns = mergedLibs;
+
+    # Merge libs directly into config.lib
+    lib = mergedLibs;
 
     nlib.namespace = lib.mkDefault namespace;
     # Only export own libs (not nested) for collection at flake level

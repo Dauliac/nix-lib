@@ -10,12 +10,12 @@
   # Private function (visible = false)
   # ============================================================
 
-  # Private: not exported to config.nlib.fns, but still tested
+  # Private: not exported to config.lib, but still tested
   nlib.lib._internal = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * x;
     description = "Internal helper - square a number";
-    visible = false; # Won't appear in config.nlib.fns or flake.lib
+    visible = false; # Won't appear in config.lib or flake.lib
     tests."squares 4" = {
       args.x = 4;
       expected = 16;
@@ -28,7 +28,7 @@
     fn =
       { a, b }:
       let
-        square = x: x * x; # Inline since _internal isn't in config.nlib.fns
+        square = x: x * x; # Inline since _internal isn't in config.lib
       in
       square a + square b;
     description = "Sum of squares of two numbers";

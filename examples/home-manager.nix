@@ -1,7 +1,7 @@
 # Example: Defining libs in home-manager module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.nlib.fns.<name> (within home-manager config)
+# Use at: config.lib.<name> (within home-manager config)
 # Output at: flake.lib.home.<name> (collected at flake-parts level)
 #
 # Usage in homeConfigurations or as NixOS home-manager module:
@@ -82,7 +82,7 @@
 
   # ============================================================
   # Vim libs (when nixvim is used inside home-manager)
-  # These get propagated up to NixOS at nlib.fns.vim.*
+  # These get propagated up to NixOS at lib.vim.*
   # ============================================================
   nlib.lib.vim.mkKeymap = {
     type = lib.types.functionTo lib.types.attrs;
@@ -124,12 +124,12 @@
   #
   # { config, ... }: {
   #   imports = [
-  #     (config.nlib.fns.mkAlias { name = "ll"; command = "ls -la"; })
-  #     (config.nlib.fns.mkGitConfig { name = "User"; email = "user@example.com"; })
-  #     (config.nlib.fns.enableProgram "direnv")
+  #     (config.lib.mkAlias { name = "ll"; command = "ls -la"; })
+  #     (config.lib.mkGitConfig { name = "User"; email = "user@example.com"; })
+  #     (config.lib.enableProgram "direnv")
   #
   #     # Vim libs (when nixvim is configured)
-  #     (config.nlib.fns.vim.mkKeymap { mode = "n"; key = "<leader>f"; action = ":Telescope<CR>"; })
+  #     (config.lib.vim.mkKeymap { mode = "n"; key = "<leader>f"; action = ":Telescope<CR>"; })
   #   ];
   # }
 }

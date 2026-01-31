@@ -1,7 +1,7 @@
 # Example: Defining libs in system-manager module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.nlib.fns.<name> (within system-manager config)
+# Use at: config.lib.<name> (within system-manager config)
 # Output at: flake.lib.system.<name> (collected at flake-parts level)
 #
 # Usage in systemConfigs:
@@ -104,12 +104,12 @@
   #
   # { config, ... }: {
   #   imports = [
-  #     (config.nlib.fns.mkSystemdService {
+  #     (config.lib.mkSystemdService {
   #       name = "myapp";
   #       description = "My Application";
   #       execStart = "${pkgs.myapp}/bin/myapp";
   #     })
-  #     (config.nlib.fns.mkEnvironmentFile {
+  #     (config.lib.mkEnvironmentFile {
   #       path = "myapp/env";
   #       content = "DEBUG=true";
   #     })

@@ -44,10 +44,8 @@ in
   flake.nixosConfigurations.test = nixpkgs.lib.nixosSystem {
     system = "x86_64-linux";
     modules = [
-      # nlib NixOS adapter
+      # nlib NixOS adapter (libs available at config.lib.*)
       nlib.nixosModules.default
-      # Optional: enables config.lib.* shorthand (alias for config.nlib.fns.*)
-      nlib.nixosModules.libShorthand
 
       # NixOS-specific libs
       ./nixos.nix

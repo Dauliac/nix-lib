@@ -1,7 +1,7 @@
 # Example: Defining libs in nix-darwin module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.nlib.fns.<name> (within darwin config)
+# Use at: config.lib.<name> (within darwin config)
 # Output at: flake.lib.darwin.<name> (collected at flake-parts level)
 #
 # Usage in darwinConfigurations:
@@ -76,9 +76,9 @@
   #
   # { config, ... }: {
   #   imports = [
-  #     (config.nlib.fns.mkBrewPackage "curl")
-  #     (config.nlib.fns.mkBrewCask "iterm2")
-  #     (config.nlib.fns.setDefault { domain = "dock"; key = "autohide"; value = true; })
+  #     (config.lib.mkBrewPackage "curl")
+  #     (config.lib.mkBrewCask "iterm2")
+  #     (config.lib.setDefault { domain = "dock"; key = "autohide"; value = true; })
   #   ];
   # }
 }

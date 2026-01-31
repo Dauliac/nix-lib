@@ -1,7 +1,7 @@
 # Example: Defining libs in nixvim module
 #
 # Define at: nlib.lib.<name>
-# Use at: config.nlib.fns.<name> (within nixvim config)
+# Use at: config.lib.<name> (within nixvim config)
 # Output at: flake.lib.vim.<name> (collected at flake-parts level)
 #
 # Usage in nixvimConfigurations:
@@ -91,9 +91,9 @@
   #
   # { config, ... }: {
   #   imports = [
-  #     (config.nlib.fns.mkKeymap { mode = "n"; key = "<leader>ff"; action = ":Telescope find_files<CR>"; })
-  #     (config.nlib.fns.enablePlugin "telescope")
-  #     (config.nlib.fns.setOption { name = "number"; value = true; })
+  #     (config.lib.mkKeymap { mode = "n"; key = "<leader>ff"; action = ":Telescope find_files<CR>"; })
+  #     (config.lib.enablePlugin "telescope")
+  #     (config.lib.setOption { name = "number"; value = true; })
   #   ];
   # }
 }
