@@ -60,8 +60,13 @@ let
   # Collected libs from other module systems (nixos, home, etc.)
   collectedMeta = lib.mapAttrs (_: collector: collector config) (cfg.metaCollectors or { });
   # Extract fns from collected metadata (only visible/public ones)
+  # Then unflatten to get proper nested structure (e.g., "vim.mkKeymap" -> { vim.mkKeymap = fn; })
   extractCollectedFns =
-    meta: lib.mapAttrs (_: m: m.fn) (lib.filterAttrs (_: m: m.visible or true) meta);
+    meta:
+    let
+      flatFns = lib.mapAttrs (_: m: m.fn) (lib.filterAttrs (_: m: m.visible or true) meta);
+    in
+    unflattenFns flatFns;
   collectedLibsByNamespace = lib.mapAttrs (_: extractCollectedFns) collectedMeta;
 
   # For tests, flatten all metadata

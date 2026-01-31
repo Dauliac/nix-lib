@@ -18,7 +18,7 @@ Tests are located in the `tests/` directory and run against the examples.
 ```bash
 # Run all checks
 cd tests
-nix flake check
+nix run "build-all"
 
 # Build all test derivations
 nix run .#build-all
