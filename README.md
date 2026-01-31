@@ -210,30 +210,7 @@ tests."test name" = {
 };
 ```
 
-## Running Tests
-
-Configure testing backend:
-
-```nix
-nlib.testing = {
-  backend = "nix-unit";
-  reporter = "junit";
-  outputPath = "test-results.xml";
-};
-```
-
-Run tests:
-
-```bash
-# From tests directory
-nix flake check
-nix run .#build-all
-
-# Or directly with nix-unit
-nix-unit --flake .#tests.lib
-```
-
 ## See Also
 
-- `examples/` - Individual examples for each module system
-- `tests/` - Full integration tests
+- `examples/` - Working examples for each module system
+- `CONTRIBUTING.md` - Development and testing guide
