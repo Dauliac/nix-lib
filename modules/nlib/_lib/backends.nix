@@ -19,6 +19,9 @@
 # Lazy evaluation: Tests are wrapped as thunks and only evaluated when needed.
 { lib }:
 let
+  libDefTypeModule = import ./libDefType.nix { inherit lib; };
+  inherit (libDefTypeModule) getMeta;
+
   inherit (lib)
     mapAttrsToList
     replaceStrings
@@ -30,9 +33,6 @@ let
 
   # Sanitize test name for use as identifier
   sanitize = s: replaceStrings [ " " ":" "-" "'" "\"" ] [ "_" "_" "_" "_" "_" ] s;
-
-  # Extract nlib metadata from lib definition
-  getMeta = def: def._nlib or def;
 
   # Apply function to args (handles both curried and attrset args)
   applyFn =

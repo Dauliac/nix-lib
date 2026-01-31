@@ -1,5 +1,41 @@
 # nlib.collectors (flake-only)
+#
+# Collectors aggregate libs from different module systems (NixOS, home-manager, etc.)
+# into the flake output. Uses a factory pattern to avoid code duplication.
 { lib, ... }:
+let
+  # Factory to create collector functions
+  # configPath: flake attribute path (e.g., ["nixosConfigurations"])
+  # attr: nlib attribute to collect ("_fns" or "_libsMeta")
+  mkCollector =
+    { configPath, attr }:
+    cfg:
+    let
+      configs = lib.attrByPath configPath { } cfg.flake;
+    in
+    lib.foldl' (acc: name: acc // (configs.${name}.config.nlib.${attr} or { })) { } (
+      lib.attrNames configs
+    );
+
+  # Configuration for each namespace
+  collectorConfigs = {
+    nixos = {
+      configPath = [ "nixosConfigurations" ];
+    };
+    home = {
+      configPath = [ "homeConfigurations" ];
+    };
+    darwin = {
+      configPath = [ "darwinConfigurations" ];
+    };
+    vim = {
+      configPath = [ "nixvimConfigurations" ];
+    };
+    system = {
+      configPath = [ "systemConfigs" ];
+    };
+  };
+in
 {
   options.nlib.collectors = lib.mkOption {
     type = lib.types.attrsOf (lib.types.functionTo (lib.types.lazyAttrsOf lib.types.unspecified));
@@ -15,67 +51,10 @@
   };
 
   # Collectors use _fns which includes both own libs and nested propagated libs
-  config.nlib.collectors = {
-    nixos =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.nixosConfigurations.${name}.config.nlib._fns or { })
-      ) { } (lib.attrNames (cfg.flake.nixosConfigurations or { }));
+  config.nlib.collectors = lib.mapAttrs (_: cfg: mkCollector (cfg // { attr = "_fns"; })) collectorConfigs;
 
-    home =
-      cfg:
-      lib.foldl' (acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._fns or { })) { } (
-        lib.attrNames (cfg.flake.homeConfigurations or { })
-      );
-
-    darwin =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.darwinConfigurations.${name}.config.nlib._fns or { })
-      ) { } (lib.attrNames (cfg.flake.darwinConfigurations or { }));
-
-    vim =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.nixvimConfigurations.${name}.config.nlib._fns or { })
-      ) { } (lib.attrNames (cfg.flake.nixvimConfigurations or { }));
-
-    system =
-      cfg:
-      lib.foldl' (acc: name: acc // (cfg.flake.systemConfigs.${name}.config.nlib._fns or { })) { } (
-        lib.attrNames (cfg.flake.systemConfigs or { })
-      );
-  };
-
-  config.nlib.metaCollectors = {
-    nixos =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.nixosConfigurations.${name}.config.nlib._libsMeta or { })
-      ) { } (lib.attrNames (cfg.flake.nixosConfigurations or { }));
-
-    home =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.homeConfigurations.${name}.config.nlib._libsMeta or { })
-      ) { } (lib.attrNames (cfg.flake.homeConfigurations or { }));
-
-    darwin =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.darwinConfigurations.${name}.config.nlib._libsMeta or { })
-      ) { } (lib.attrNames (cfg.flake.darwinConfigurations or { }));
-
-    vim =
-      cfg:
-      lib.foldl' (
-        acc: name: acc // (cfg.flake.nixvimConfigurations.${name}.config.nlib._libsMeta or { })
-      ) { } (lib.attrNames (cfg.flake.nixvimConfigurations or { }));
-
-    system =
-      cfg:
-      lib.foldl' (acc: name: acc // (cfg.flake.systemConfigs.${name}.config.nlib._libsMeta or { })) { } (
-        lib.attrNames (cfg.flake.systemConfigs or { })
-      );
-  };
+  # Meta collectors use _libsMeta for test metadata
+  config.nlib.metaCollectors = lib.mapAttrs (
+    _: cfg: mkCollector (cfg // { attr = "_libsMeta"; })
+  ) collectorConfigs;
 }

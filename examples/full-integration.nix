@@ -165,7 +165,7 @@ in
   };
 
   # ============================================================
-  # 6. Darwin configuration (for macOS)
+  # 6. Darwin configuration (for macOS) with nested home-manager
   # ============================================================
   flake.darwinConfigurations.test = nix-darwin.lib.darwinSystem {
     system = "x86_64-darwin";
@@ -176,8 +176,40 @@ in
       # Darwin-specific libs
       ./darwin.nix
 
-      # Required darwin options
-      { nixpkgs.hostPlatform = "x86_64-darwin"; }
+      # Home-manager as darwin module
+      home-manager.darwinModules.home-manager
+
+      # Darwin + home-manager configuration
+      {
+        home-manager.useGlobalPkgs = true;
+        home-manager.useUserPackages = true;
+
+        # Home-manager user with nlib libs
+        home-manager.users.test =
+          { ... }:
+          {
+            imports = [
+              # nlib home-manager adapter
+              nlib.homeModules.default
+
+              # Home-manager specific libs (same as NixOS nested)
+              ./home-manager.nix
+
+              # Nixvim inside home-manager
+              nixvim.homeManagerModules.nixvim
+            ];
+
+            home.stateVersion = "24.05";
+          };
+
+        # User configuration
+        users.users.test = {
+          home = "/Users/test";
+        };
+
+        # Required darwin options
+        nixpkgs.hostPlatform = "x86_64-darwin";
+      }
     ];
   };
 

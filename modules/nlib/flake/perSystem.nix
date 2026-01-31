@@ -16,7 +16,7 @@
 { lib, ... }:
 let
   libDefTypeModule = import ../_lib/libDefType.nix { inherit lib; };
-  inherit (libDefTypeModule) flattenLibs unflattenFns;
+  inherit (libDefTypeModule) flattenLibs unflattenFns extractFnsFlat;
 in
 {
   perSystem =
@@ -24,11 +24,6 @@ in
     let
       # Flatten nested lib definitions
       flatLibDefs = flattenLibs "" (config.nlib.lib or { });
-
-      # Extract plain functions (only visible/public ones)
-      # Default visible to true if not specified
-      extractFnsFlat =
-        defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible or true) defs);
 
       # Get lib definitions, flatten, extract, unflatten
       perSystemFns = unflattenFns (extractFnsFlat flatLibDefs);

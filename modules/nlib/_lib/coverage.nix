@@ -7,10 +7,10 @@
 #   - New format: { _nlib = { name, tests, fn, ... }; ... }
 { lib }:
 let
-  inherit (lib) length attrValues;
+  libDefTypeModule = import ./libDefType.nix { inherit lib; };
+  inherit (libDefTypeModule) getMeta;
 
-  # Extract nlib metadata from lib definition (supports both formats)
-  getMeta = def: def._nlib or def;
+  inherit (lib) length attrValues;
 in
 {
   # Calculate coverage statistics

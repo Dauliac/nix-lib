@@ -24,7 +24,7 @@
 { lib }:
 let
   libDefTypeModule = import ./libDefType.nix { inherit lib; };
-  inherit (libDefTypeModule) flattenLibs unflattenFns;
+  inherit (libDefTypeModule) flattenLibs unflattenFns libDefsToMeta extractFnsFlat;
 
   namespaces = {
     nixos = "nixos";
@@ -35,65 +35,53 @@ let
     flake = "lib";
   };
 
+  # Shared nesting configurations (DRY)
+  homeManagerNesting = {
+    name = "home";
+    path = [
+      "home-manager"
+      "users"
+    ];
+    multi = true; # Multiple users
+  };
+
+  nixvimInHomeNesting = {
+    # nixvim nested inside home-manager users
+    name = "vim";
+    path = [
+      "home-manager"
+      "users"
+    ];
+    multi = true;
+    # Deep path: go into each user, then programs.nixvim
+    nestedPath = [
+      "programs"
+      "nixvim"
+    ];
+  };
+
+  nixvimDirectNesting = {
+    name = "vim";
+    path = [
+      "programs"
+      "nixvim"
+    ];
+    multi = false;
+  };
+
   # Define which nested systems each adapter should look for
   # Supports deep nesting: NixOS -> home-manager -> nixvim
   nestedSystems = {
     nixos = [
-      {
-        name = "home";
-        path = [
-          "home-manager"
-          "users"
-        ];
-        multi = true; # Multiple users
-      }
-      {
-        # nixvim nested inside home-manager users
-        name = "vim";
-        path = [
-          "home-manager"
-          "users"
-        ];
-        multi = true;
-        # Deep path: go into each user, then programs.nixvim
-        nestedPath = [
-          "programs"
-          "nixvim"
-        ];
-      }
+      homeManagerNesting
+      nixvimInHomeNesting
     ];
     home-manager = [
-      {
-        name = "vim";
-        path = [
-          "programs"
-          "nixvim"
-        ];
-        multi = false;
-      }
+      nixvimDirectNesting
     ];
     nix-darwin = [
-      {
-        name = "home";
-        path = [
-          "home-manager"
-          "users"
-        ];
-        multi = true;
-      }
-      {
-        # nixvim nested inside home-manager users
-        name = "vim";
-        path = [
-          "home-manager"
-          "users"
-        ];
-        multi = true;
-        nestedPath = [
-          "programs"
-          "nixvim"
-        ];
-      }
+      homeManagerNesting
+      nixvimInHomeNesting
     ];
     system-manager = [
       # system-manager can have home-manager-like user configs
@@ -120,34 +108,6 @@ let
 
   # Flatten nested lib definitions
   flatLibDefs = flattenLibs "" (cfg.lib or { });
-
-  # Convert lib definitions to metadata format
-  # Uses resolved functions from config.lib so overrides are tested
-  libDefsToMeta =
-    defs: resolvedFns:
-    lib.mapAttrs (attrName: def: {
-      name = attrName;
-      # Use resolved function from config.lib, fallback to def.fn for private libs
-      fn =
-        let
-          path = lib.splitString "." attrName;
-          resolved = lib.attrByPath path null resolvedFns;
-        in
-        if resolved != null then resolved else def.fn;
-      description = def.description or "";
-      type = def.type or null;
-      visible = def.visible or true;
-      tests = lib.mapAttrs (_: t: {
-        args = t.args or { };
-        expected = t.expected or null;
-        assertions = t.assertions or [ ];
-      }) (def.tests or { });
-    }) defs;
-
-  # Extract plain functions (only visible/public ones)
-  # Default visible to true if not specified
-  extractFnsFlat =
-    defs: lib.mapAttrs (_: def: def.fn) (lib.filterAttrs (_: def: def.visible or true) defs);
 
   # Get lib definitions, flatten, extract, unflatten
   allLibs = if cfg.enable then unflattenFns (extractFnsFlat flatLibDefs) else { };
