@@ -164,6 +164,7 @@ All libs are collected and exported at the flake level under `flake.lib.<namespa
 | `flake.lib.darwin.*` | `darwinConfigurations.*.nlib.lib.*` | nix-darwin libs |
 | `flake.lib.vim.*` | `nixvimConfigurations.*.nlib.lib.*` | Standalone nixvim libs |
 | `flake.lib.system.*` | `systemConfigs.*.nlib.lib.*` | system-manager libs |
+| `flake.lib.wrappers.*` | `wrapperConfigurations.*.nlib.lib.*` | nix-wrapper-modules libs |
 
 ## Available Modules
 
@@ -177,6 +178,7 @@ Import the adapter for your module system. Libs are automatically available at `
 | `darwinModules.default` | `nlib.darwinModules.default` |
 | `nixvimModules.default` | `nlib.nixvimModules.default` |
 | `systemManagerModules.default` | `nlib.systemManagerModules.default` |
+| `wrapperModules.default` | `nlib.wrapperModules.default` |
 
 ## Test Formats
 

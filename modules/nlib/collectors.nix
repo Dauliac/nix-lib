@@ -163,6 +163,11 @@ in
       configPath = [ "nlib" ];
       description = "Per-system libs from legacyPackages";
     };
+    wrappers = lib.mkDefault {
+      pathType = "flat";
+      configPath = [ "wrapperConfigurations" ];
+      description = "nix-wrapper-modules libs";
+    };
   };
 
   # Generate collector functions from definitions

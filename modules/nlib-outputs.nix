@@ -14,4 +14,11 @@ in
   flake.darwinModules.default = nlibLib.mkAdapter { name = "nix-darwin"; };
   flake.nixvimModules.default = nlibLib.mkAdapter { name = "nixvim"; };
   flake.systemManagerModules.default = nlibLib.mkAdapter { name = "system-manager"; };
+
+  # nix-wrapper-modules adapter
+  # Use with: imports = [ nlib.wrapperModules.default ];
+  flake.wrapperModules.default = nlibLib.mkAdapter {
+    name = "nix-wrapper-modules";
+    namespace = "wrappers";
+  };
 }
