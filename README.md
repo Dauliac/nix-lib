@@ -25,12 +25,31 @@ nlib.lib.double = {
 
 This gives you:
 - **Type safety** - explicit Nix types for your functions
-- **Built-in testing** - tests live with the code
+- **Built-in testing** - tests live with the code (nix-unit integration)
 - **Documentation** - descriptions in one place
 - **Composition** - use the NixOS module system to combine libraries
 - **Nested propagation** - libs from nested modules (home-manager in NixOS) are accessible in parent scope
 
 ## Quick Start
+
+```nix
+{
+  inputs.nlib.url = "github:Dauliac/nlib";
+
+  outputs = { nlib, ... }:
+    nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [ nlib.flakeModules.default ];
+
+      # Define a pure flake-level lib
+      nlib.lib.double = {
+        type = lib.types.functionTo lib.types.int;
+        fn = x: x * 2;
+        description = "Double a number";
+        tests."doubles 5" = { args.x = 5; expected = 10; };
+      };
+    };
+}
+```
 
 See `examples/` for complete working examples of each module system.
 
@@ -54,6 +73,32 @@ nlib.lib.myFunc = {
 ```
 
 ### Lib Flow
+
+```mermaid
+flowchart TB
+    subgraph Input["Define (nlib.lib.*)"]
+        D1["nlib.lib.myFunc = {<br/>type, fn, description, tests}"]
+    end
+
+    subgraph Process["nlib Processing"]
+        P1["Extract fn → config.lib.*"]
+        P2["Extract tests → flake.tests"]
+        P3["Store metadata → nlib._libsMeta"]
+    end
+
+    subgraph Output["Outputs"]
+        O1["config.lib.myFunc<br/>(use in module)"]
+        O2["flake.lib.namespace.myFunc<br/>(flake export)"]
+        O3["flake.tests.test_myFunc_*<br/>(nix-unit tests)"]
+    end
+
+    D1 --> P1
+    D1 --> P2
+    D1 --> P3
+    P1 --> O1
+    P1 --> O2
+    P2 --> O3
+```
 
 ```mermaid
 flowchart TB
@@ -158,13 +203,15 @@ All libs are collected and exported at the flake level under `flake.lib.<namespa
 | Namespace | Source | Description |
 |-----------|--------|-------------|
 | `flake.lib.flake.*` | `nlib.lib.*` in flake-parts | Pure flake-level libs |
-| `flake.lib.perSystem.*` | `legacyPackages.<system>.nlib.*` | Per-system libs (merged) |
-| `flake.lib.nixos.*` | `nixosConfigurations.*.nlib.lib.*` | NixOS configuration libs |
-| `flake.lib.home.*` | `homeConfigurations.*.nlib.lib.*` | Standalone home-manager libs |
-| `flake.lib.darwin.*` | `darwinConfigurations.*.nlib.lib.*` | nix-darwin libs |
-| `flake.lib.vim.*` | `nixvimConfigurations.*.nlib.lib.*` | Standalone nixvim libs |
-| `flake.lib.system.*` | `systemConfigs.*.nlib.lib.*` | system-manager libs |
-| `flake.lib.wrappers.*` | `wrapperConfigurations.*.nlib.lib.*` | nix-wrapper-modules libs |
+| `flake.lib.nlib.*` | nlib internals | `mkAdapter`, `backends` utilities |
+| `flake.lib.nixos.*` | `nixosConfigurations.*.config.lib.*` | NixOS configuration libs |
+| `flake.lib.home.*` | `homeConfigurations.*.config.lib.*` | Standalone home-manager libs |
+| `flake.lib.darwin.*` | `darwinConfigurations.*.config.lib.*` | nix-darwin libs |
+| `flake.lib.vim.*` | `nixvimConfigurations.*.config.lib.*` | Standalone nixvim libs |
+| `flake.lib.system.*` | `systemConfigs.*.config.lib.*` | system-manager libs |
+| `flake.lib.wrappers.*` | `wrapperConfigurations.*.config.lib.*` | nix-wrapper-modules libs |
+
+Per-system libs are available at `legacyPackages.<system>.lib.<namespace>.*`.
 
 ## Available Modules
 
@@ -277,7 +324,123 @@ nlib.collectorDefs.nixos.enable = false;  # Disable NixOS collection
 nlib.collectorDefs.nixos.namespace = "os";  # flake.lib.os.* instead of flake.lib.nixos.*
 ```
 
+## Testing
+
+nlib uses [nix-unit](https://github.com/nix-community/nix-unit) for testing. Tests defined in `nlib.lib.*.tests` are automatically converted to nix-unit format.
+
+### Running Tests
+
+```bash
+cd tests
+nix run .#test
+```
+
+Output:
+```
+=== Running nix-unit tests ===
+🎉 97/97 successful
+=== All tests passed! ===
+```
+
+### Test Architecture
+
+```mermaid
+flowchart TB
+    subgraph Define["Define Libraries"]
+        L1["nlib.lib.double = {<br/>fn, type, tests...}"]
+        L2["nlib.lib.add = {<br/>fn, type, tests...}"]
+    end
+
+    subgraph BDD["BDD Tests (tests/bdd/)"]
+        B1["collectors.nix"]
+        B2["adapters.nix"]
+        B3["libDef.nix"]
+    end
+
+    subgraph PerSystem["perSystem.nix-unit.tests"]
+        PS["System-specific tests"]
+    end
+
+    subgraph Generate["Auto-Generated"]
+        G1["test_double_doubles_5"]
+        G2["test_add_adds_positives"]
+    end
+
+    subgraph Merge["flake.tests"]
+        M["All tests merged"]
+    end
+
+    subgraph Run["nix run .#test"]
+        R["nix-unit --flake .#tests<br/>🎉 97/97 successful"]
+    end
+
+    L1 --> G1
+    L2 --> G2
+    G1 --> M
+    G2 --> M
+    B1 --> M
+    B2 --> M
+    B3 --> M
+    PS --> M
+    M --> R
+```
+
+Tests are organized in three layers:
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| **Unit tests** | `nlib.lib.*.tests` | Function behavior (defined with libs) |
+| **BDD tests** | `tests/bdd/*.nix` | Structure validation (namespaces, adapters) |
+| **perSystem tests** | `perSystem.nix-unit.tests` | System-specific lib checks |
+
+All tests are merged into `flake.tests` and run together via `nix-unit --flake .#tests`.
+
+### Writing Tests
+
+Tests are defined alongside lib definitions:
+
+```nix
+nlib.lib.add = {
+  type = lib.types.functionTo lib.types.int;
+  fn = { a, b }: a + b;
+  description = "Add two numbers";
+  tests = {
+    "adds positives" = { args.x = { a = 2; b = 3; }; expected = 5; };
+    "adds negatives" = { args.x = { a = -1; b = -2; }; expected = -3; };
+  };
+};
+```
+
+For BDD-style structure tests, create modules in `tests/bdd/`:
+
+```nix
+# tests/bdd/myTests.nix
+{ lib, config, ... }:
+{
+  # System-agnostic tests
+  flake.tests = {
+    "test_myFeature_works" = {
+      expr = lib.hasAttr "myAttr" config.flake.lib;
+      expected = true;
+    };
+  };
+
+  # System-specific tests
+  perSystem = { config, ... }: {
+    nix-unit.tests = {
+      "test_perSystem_lib_exists" = {
+        expr = config.legacyPackages.lib != { };
+        expected = true;
+      };
+    };
+  };
+}
+```
+
+**Note:** nix-unit requires test names to start with `test`.
+
 ## See Also
 
 - `examples/` - Working examples for each module system
+- `tests/` - Test flake with BDD tests
 - `CONTRIBUTING.md` - Development and testing guide

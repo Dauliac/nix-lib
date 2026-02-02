@@ -21,8 +21,8 @@ let
     nix-darwin
     system-manager
     ;
-  # nlib is passed via inputs.self from the test flake
-  nlib = inputs.self;
+  # nlib is passed via inputs.nlib from the test flake
+  nlib = inputs.nlib or inputs.self;
 in
 {
   # ============================================================

@@ -9,13 +9,21 @@
 #     tests."doubles 5" = { args.x = 5; expected = 10; };
 #   };
 #
-# The plain functions are auto-populated to lib.flake.<name>
+# Output structure:
+#   - flake.lib.flake.<name> for pure flake libs (no pkgs dependency)
+#   - flake.lib.nlib for internal utilities
+#   - legacyPackages.<sys>.lib.<ns>.<name> for module system libs (system-specific)
 #
 { lib, config, ... }:
 let
   nlibLib = import ../_lib { inherit lib; };
   libDefTypeModule = import ../_lib/libDefType.nix { inherit lib; };
-  inherit (libDefTypeModule) flattenLibs unflattenFns libDefsToMeta extractFnsFlat;
+  inherit (libDefTypeModule)
+    flattenLibs
+    unflattenFns
+    libDefsToMeta
+    extractFnsFlat
+    ;
   cfg = config.nlib;
 
   # Flatten nested lib definitions (nlib.lib.treefmt.check -> "treefmt.check")
@@ -27,11 +35,22 @@ let
   # Use config.lib.flake for resolved functions (includes overrides)
   flakeLibsMeta = libDefsToMeta flatLibDefs config.lib.flake;
 
-  # Collected libs from other module systems (nixos, home, etc.)
-  # Uses collectors which get _fns (includes nested propagated libs)
-  # Pass systems for perSystem collectors
-  collectorConfig = config // { systems = config.systems or [ ]; };
-  collectedLibsByNamespace = lib.mapAttrs (_: collector: collector collectorConfig) (cfg.collectors or { });
+  # Collection config for collectors
+  collectorConfig = config // {
+    systems = config.systems or [ ];
+  };
+
+  # Flat collection for flake.lib output (merges all systems)
+  # Uses legacy flat collectors for backwards compatibility
+  collectedLibsByNamespace = lib.mapAttrs (_: collector: collector collectorConfig) (
+    cfg.collectors or { }
+  );
+
+  # System-aware collection for legacyPackages output
+  # Returns: { namespace -> { system -> { name -> fn } } }
+  collectedByNamespaceBySystem = lib.mapAttrs (_: collector: collector collectorConfig) (
+    cfg.systemCollectors or { }
+  );
 
   # Collected metadata for tests (uses metaCollectors which get _libsMeta)
   collectedMeta = lib.mapAttrs (_: collector: collector collectorConfig) (cfg.metaCollectors or { });
@@ -45,6 +64,8 @@ in
 {
   imports = [
     ./perSystem.nix
+    ./systemLibs.nix
+    # Note: adapterDefs is imported by import-tree at the nlib level
   ];
 
   # Define options.nlib.lib for flake-level lib definitions
@@ -86,6 +107,17 @@ in
     description = "Pure flake-level lib functions (auto-populated from nlib.lib)";
   };
 
+  # Store system-aware collection for perSystem module to access
+  options.nlib._collectedBySystem = lib.mkOption {
+    type = lib.types.lazyAttrsOf lib.types.unspecified;
+    default = { };
+    internal = true;
+    description = "System-aware collected libs for legacyPackages export";
+  };
+
+  # Note: flake.tests option is declared by nix-unit module
+  # (nix-unit.modules.flake.default or via nlib's nix-unit.nix import)
+
   config = {
     # Auto-populate lib.flake with extracted functions
     lib.flake = flakeLibs;
@@ -94,14 +126,20 @@ in
     # - flake.lib.flake.<name> for pure flake libs
     # - flake.lib.nlib for internal utilities
     # - flake.lib.<namespace>.<name> for collected libs (from collectorDefs)
+    # Also available at legacyPackages.<sys>.lib.<ns> for system-specific access
     flake.lib = {
       inherit (config.lib) flake;
       nlib = nlibLib;
-    } // collectedLibsByNamespace;
+    }
+    // collectedLibsByNamespace;
 
-    flake.tests.${cfg.namespace} = tests;
+    # Tests go directly under flake.tests (nix-unit expects this structure)
+    flake.tests = tests;
 
     # Store metadata for test collection
     nlib._flakeLibsMeta = flakeLibsMeta;
+
+    # Store system-aware collection for systemLibs.nix to use
+    nlib._collectedBySystem = collectedByNamespaceBySystem;
   };
 }

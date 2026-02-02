@@ -18,7 +18,10 @@
     get-flake.url = "github:ursi/get-flake";
     import-tree.url = "github:vic/import-tree";
     nix-unit = {
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        flake-parts.follows = "flake-parts";
+        nixpkgs.follows = "nixpkgs";
+      };
       url = "github:nix-community/nix-unit";
     };
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";

@@ -81,11 +81,9 @@
 
   nlib.lib.mkWrapperPath = {
     type = lib.types.functionTo lib.types.attrs;
-    fn =
-      packages:
-      {
-        drv.path = packages;
-      };
+    fn = packages: {
+      drv.path = packages;
+    };
     description = "Add packages to wrapper PATH";
     tests."adds packages to path" = {
       args.packages = [

@@ -149,26 +149,24 @@ let
   # Uses resolved functions from config.lib so overrides are tested
   libDefsToMeta =
     defs: resolvedFns:
-    lib.mapAttrs (
-      attrName: def: {
-        name = attrName;
-        # Use resolved function from config.lib, fallback to def.fn for private libs
-        fn =
-          let
-            path = lib.splitString "." attrName;
-            resolved = lib.attrByPath path null resolvedFns;
-          in
-          if resolved != null then resolved else def.fn;
-        description = def.description or "";
-        type = def.type or null;
-        visible = def.visible or true;
-        tests = lib.mapAttrs (_: t: {
-          args = t.args or { };
-          expected = t.expected or null;
-          assertions = t.assertions or [ ];
-        }) (def.tests or { });
-      }
-    ) defs;
+    lib.mapAttrs (attrName: def: {
+      name = attrName;
+      # Use resolved function from config.lib, fallback to def.fn for private libs
+      fn =
+        let
+          path = lib.splitString "." attrName;
+          resolved = lib.attrByPath path null resolvedFns;
+        in
+        if resolved != null then resolved else def.fn;
+      description = def.description or "";
+      type = def.type or null;
+      visible = def.visible or true;
+      tests = lib.mapAttrs (_: t: {
+        args = t.args or { };
+        expected = t.expected or null;
+        assertions = t.assertions or [ ];
+      }) (def.tests or { });
+    }) defs;
 
   # Extract plain functions from lib definitions (only visible/public ones)
   # Default visible to true if not specified
