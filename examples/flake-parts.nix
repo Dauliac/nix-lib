@@ -15,6 +15,11 @@
     type = lib.types.functionTo lib.types.int;
     fn = x: x * 2;
     description = "Double a number";
+    file = "examples/flake-parts.nix";
+    example = ''
+      config.lib.flake.double 5
+      # => 10
+    '';
     tests."doubles 5" = {
       args.x = 5;
       expected = 10;
@@ -29,6 +34,11 @@
     type = lib.types.functionTo lib.types.int;
     fn = { a, b }: a + b;
     description = "Add two integers";
+    file = "examples/flake-parts.nix";
+    example = ''
+      config.lib.flake.add { a = 2; b = 3; }
+      # => 5
+    '';
     tests."adds positives" = {
       args.x = {
         a = 2;

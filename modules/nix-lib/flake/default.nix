@@ -65,6 +65,7 @@ in
   imports = [
     ./perSystem.nix
     ./systemLibs.nix
+    ./docs.nix
     # Note: adapterDefs is imported by import-tree at the nix-lib level
   ];
 

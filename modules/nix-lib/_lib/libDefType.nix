@@ -88,6 +88,12 @@ let
           description = "Optional example usage";
         };
 
+        file = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Source file path (for documentation links)";
+        };
+
         visible = mkOption {
           type = types.bool;
           default = true;
@@ -161,6 +167,8 @@ let
       description = def.description or "";
       type = def.type or null;
       visible = def.visible or true;
+      example = def.example or null;
+      file = def.file or null;
       tests = lib.mapAttrs (_: t: {
         args = t.args or { };
         expected = t.expected or null;

@@ -11,7 +11,7 @@
   # ============================================================
 
   # Private: not exported to config.lib, but still tested
-  nix-lib.lib._internal = {
+  nix-lib.lib.internal = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * x;
     description = "Internal helper - square a number";
