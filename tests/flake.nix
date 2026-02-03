@@ -69,7 +69,10 @@
             in
             {
               # nix-unit configuration for perSystem.nix-unit.tests
-              nix-unit.inputs = nix-unit.inputs // inputs // { inherit nix-lib; };
+              # Note: We override nix-unit.inputs with fresh inputs to avoid stale closures
+              nix-unit.inputs = inputs // {
+                inherit nix-lib;
+              };
 
               # Disable automatic nix-unit check (can't work in sandbox due to get-flake)
               checks.nix-unit = lib.mkForce (pkgs.runCommand "nix-unit-skip" { } "mkdir -p $out");
