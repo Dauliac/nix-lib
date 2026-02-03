@@ -1,5 +1,5 @@
 {
-  description = "nlib tests - unit tests and integration tests";
+  description = "nix-lib tests - unit tests and integration tests";
 
   inputs = {
     get-flake.url = "github:ursi/get-flake";
@@ -14,14 +14,14 @@
   outputs =
     inputs:
     let
-      nlib = inputs.get-flake ../.;
-      inherit (nlib.inputs) nix-unit;
+      nix-lib = inputs.get-flake ../.;
+      inherit (nix-lib.inputs) nix-unit;
     in
-    nlib.inputs.flake-parts.lib.mkFlake
+    nix-lib.inputs.flake-parts.lib.mkFlake
       {
         # Pass self as THIS flake (tests flake)
         inputs = inputs // {
-          inherit nlib;
+          inherit nix-lib;
         };
       }
       (
@@ -30,8 +30,8 @@
           systems = [ "x86_64-linux" ];
 
           imports = [
-            # nlib flake module
-            nlib.flakeModules.default
+            # nix-lib flake module
+            nix-lib.flakeModules.default
             # nix-unit module for perSystem.nix-unit.tests support
             # Note: The automated nix-unit check in `nix flake check` may fail due to
             # get-flake sandbox issues, but manual execution works:
@@ -45,17 +45,22 @@
             ./bdd/libDef.nix
           ];
 
-          nlib.testing = {
+          nix-lib.testing = {
             backend = "nix-unit";
             reporter = "junit";
             outputPath = "test-results.xml";
           };
 
           perSystem =
-            { pkgs, system, lib, ... }:
+            {
+              pkgs,
+              system,
+              lib,
+              ...
+            }:
             {
               # nix-unit configuration for perSystem.nix-unit.tests
-              nix-unit.inputs = nix-unit.inputs // inputs // { inherit nlib; };
+              nix-unit.inputs = nix-unit.inputs // inputs // { inherit nix-lib; };
 
               # Disable automatic nix-unit check (can't work in sandbox due to get-flake)
               checks.nix-unit = lib.mkForce (pkgs.runCommand "nix-unit-skip" { } "mkdir -p $out");

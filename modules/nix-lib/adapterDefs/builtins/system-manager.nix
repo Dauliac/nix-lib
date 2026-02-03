@@ -1,7 +1,7 @@
 # system-manager adapter definition
 { lib, ... }:
 {
-  config.nlib.adapterDefs.system-manager = lib.mkDefault {
+  config.nix-lib.adapterDefs.system-manager = lib.mkDefault {
     namespace = "system";
     hasBuiltinLib = false;
     collector = {

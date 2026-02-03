@@ -1,6 +1,6 @@
-# Base module for nlib lib definitions
+# Base module for nix-lib lib definitions
 #
-# Defines the internal _nlibMeta option used to collect test metadata.
+# Defines the internal _nixLibMeta option used to collect test metadata.
 # This module is automatically included in all lib evaluations.
 { lib, ... }:
 {

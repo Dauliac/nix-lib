@@ -3,27 +3,27 @@
 # nix-wrapper-modules creates wrapped executables via the module system.
 # This example shows how to define helper libs for wrapper configurations.
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within wrapper config)
 # Output at: flake.lib.wrappers.<name> (collected at flake-parts level)
 #
 # Usage in wrapperConfigurations:
 #   wrapperConfigurations.myWrapper = evalModules {
 #     modules = [
-#       nlib.wrapperModules.default
+#       nix-lib.wrapperModules.default
 #       {
-#         nlib.enable = true;
-#         nlib.lib.myHelper = { ... };
+#         nix-lib.enable = true;
+#         nix-lib.lib.myHelper = { ... };
 #       }
 #     ];
 #   };
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # Wrapper-specific lib functions
-  nlib.lib.mkWrapperFlags = {
+  nix-lib.lib.mkWrapperFlags = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -51,7 +51,7 @@
     };
   };
 
-  nlib.lib.mkWrapperEnv = {
+  nix-lib.lib.mkWrapperEnv = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -79,7 +79,7 @@
     };
   };
 
-  nlib.lib.mkWrapperPath = {
+  nix-lib.lib.mkWrapperPath = {
     type = lib.types.functionTo lib.types.attrs;
     fn = packages: {
       drv.path = packages;

@@ -14,19 +14,19 @@ let
 
   # Pre-evaluate all expressions at flake eval time
   results = {
-    mkAdapterIsFunc = lib.isFunction (flakeLib.nlib.mkAdapter or null);
-    backendsNonEmpty = hasNonEmpty "backends" (flakeLib.nlib or { });
+    mkAdapterIsFunc = lib.isFunction (flakeLib.nix-lib.mkAdapter or null);
+    backendsNonEmpty = hasNonEmpty "backends" (flakeLib.nix-lib or { });
     flakeHasFunc = hasFunction (flakeLib.flake or { });
   };
 in
 {
   # Note: nix-unit requires test names to start with "test"
   flake.tests = {
-    "test_libDef_nlib_mkAdapter_is_function" = {
+    "test_libDef_nix_lib_mkAdapter_is_function" = {
       expr = results.mkAdapterIsFunc;
       expected = true;
     };
-    "test_libDef_nlib_backends_not_empty" = {
+    "test_libDef_nix_lib_backends_not_empty" = {
       expr = results.backendsNonEmpty;
       expected = true;
     };

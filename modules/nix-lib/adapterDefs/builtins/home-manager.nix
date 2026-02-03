@@ -1,7 +1,7 @@
 # home-manager adapter definition
 { lib, ... }:
 {
-  config.nlib.adapterDefs.home-manager = lib.mkDefault {
+  config.nix-lib.adapterDefs.home-manager = lib.mkDefault {
     namespace = "home";
     hasBuiltinLib = true;
     collector = {

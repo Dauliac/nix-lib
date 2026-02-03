@@ -1,7 +1,7 @@
 # nix-darwin adapter definition
 { lib, ... }:
 {
-  config.nlib.adapterDefs.nix-darwin = lib.mkDefault {
+  config.nix-lib.adapterDefs.nix-darwin = lib.mkDefault {
     namespace = "darwin";
     hasBuiltinLib = false;
     collector = {

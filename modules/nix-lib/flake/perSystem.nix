@@ -1,9 +1,9 @@
-# nlib perSystem flake.parts module
+# nix-lib perSystem flake.parts module
 #
-# Defines nlib.lib for per-system libs inside the perSystem block:
+# Defines nix-lib.lib for per-system libs inside the perSystem block:
 #
 #   perSystem = { pkgs, lib, config, ... }: {
-#     nlib.lib.writeGreeting = {
+#     nix-lib.lib.writeGreeting = {
 #       type = lib.types.functionTo lib.types.package;
 #       fn = name: pkgs.writeText "greeting" "Hello, ${name}!";
 #       description = "Write a greeting file";
@@ -23,15 +23,15 @@ in
     { lib, config, ... }:
     let
       # Flatten nested lib definitions
-      flatLibDefs = flattenLibs "" (config.nlib.lib or { });
+      flatLibDefs = flattenLibs "" (config.nix-lib.lib or { });
 
       # Get lib definitions, flatten, extract, unflatten
       perSystemFns = unflattenFns (extractFnsFlat flatLibDefs);
     in
     {
-      # Define options.nlib.lib for per-system lib definitions
+      # Define options.nix-lib.lib for per-system lib definitions
       # Supports nested namespaces
-      options.nlib.lib = lib.mkOption {
+      options.nix-lib.lib = lib.mkOption {
         type = lib.types.lazyAttrsOf lib.types.unspecified;
         default = { };
         description = ''
@@ -41,7 +41,7 @@ in
           Usage:
           ```nix
           perSystem = { pkgs, lib, config, ... }: {
-            nlib.lib.writeGreeting = {
+            nix-lib.lib.writeGreeting = {
               type = lib.types.functionTo lib.types.package;
               fn = name: pkgs.writeText "greeting" "Hello, ''${name}!";
               description = "Write a greeting file";
@@ -49,7 +49,7 @@ in
             };
 
             # Nested namespace
-            nlib.lib.scripts.hello = {
+            nix-lib.lib.scripts.hello = {
               type = lib.types.functionTo lib.types.package;
               fn = msg: pkgs.writeShellScriptBin "hello" "echo ''${msg}";
               description = "Create hello script";
@@ -65,10 +65,10 @@ in
       options.lib = lib.mkOption {
         type = lib.types.lazyAttrsOf lib.types.unspecified;
         default = { };
-        description = "Per-system lib functions (auto-populated from nlib.lib)";
+        description = "Per-system lib functions (auto-populated from nix-lib.lib)";
       };
 
-      options.nlib.namespace = lib.mkOption {
+      options.nix-lib.namespace = lib.mkOption {
         type = lib.types.str;
         default = "lib";
         description = "Namespace for this system's libs in flake.lib output";
@@ -79,8 +79,8 @@ in
         # Auto-populate lib with extracted functions
         lib = perSystemFns;
 
-        # Auto-expose to legacyPackages.nlib for external access
-        legacyPackages.nlib = perSystemFns;
+        # Auto-expose to legacyPackages.nix-lib for external access
+        legacyPackages.nix-lib = perSystemFns;
       };
     };
 }

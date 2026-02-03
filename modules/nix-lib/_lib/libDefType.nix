@@ -1,8 +1,8 @@
 # libDefType - Option type for lib definitions with nested namespace support
 #
 # Supports both flat and nested definitions:
-#   nlib.lib.double = { fn = ...; };           # flat
-#   nlib.lib.treefmt.check = { fn = ...; };    # nested
+#   nix-lib.lib.double = { fn = ...; };           # flat
+#   nix-lib.lib.treefmt.check = { fn = ...; };    # nested
 #
 { lib }:
 let
@@ -140,10 +140,10 @@ let
       in
       lib.recursiveUpdate acc (lib.setAttrByPath path value)
     ) { } (builtins.attrNames flatFns);
-  # Extract nlib metadata from lib definition (supports both formats)
+  # Extract nix-lib metadata from lib definition (supports both formats)
   # Legacy: { name, tests, fn, ... }
-  # New: { _nlib = { name, tests, fn, ... }; ... }
-  getMeta = def: def._nlib or def;
+  # New: { _nix-lib = { name, tests, fn, ... }; ... }
+  getMeta = def: def._nix-lib or def._nlib or def;
 
   # Convert lib definitions to metadata format for backends
   # Uses resolved functions from config.lib so overrides are tested

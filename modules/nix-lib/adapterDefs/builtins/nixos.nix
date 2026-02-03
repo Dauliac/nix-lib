@@ -1,7 +1,7 @@
 # NixOS adapter definition
 { lib, ... }:
 {
-  config.nlib.adapterDefs.nixos = lib.mkDefault {
+  config.nix-lib.adapterDefs.nixos = lib.mkDefault {
     namespace = "nixos";
     hasBuiltinLib = true;
     collector = {

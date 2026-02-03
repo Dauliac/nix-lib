@@ -1,4 +1,4 @@
-# nlib.adapterDefs - Unified adapter definitions
+# nix-lib.adapterDefs - Unified adapter definitions
 #
 # Declaratively define module system adapters with their:
 # - Namespace (e.g., "home" for home-manager)
@@ -8,7 +8,7 @@
 #
 # Usage:
 #   # Add custom module system
-#   nlib.adapterDefs.devenv = {
+#   nix-lib.adapterDefs.devenv = {
 #     namespace = "devenv";
 #     hasBuiltinLib = false;
 #     collector.configPath = [ "devenvConfigurations" ];
@@ -16,7 +16,7 @@
 #   };
 #
 #   # Extend existing system with custom nesting
-#   nlib.adapterDefs.nixos.nestedSystems = lib.mkForce [
+#   nix-lib.adapterDefs.nixos.nestedSystems = lib.mkForce [
 #     { name = "home"; path = [ "home-manager" "users" ]; multi = true; }
 #     { name = "custom"; path = [ "myModule" ]; }
 #   ];
@@ -36,7 +36,7 @@ in
     ./builtins/perSystem.nix
   ];
 
-  options.nlib.adapterDefs = lib.mkOption {
+  options.nix-lib.adapterDefs = lib.mkOption {
     type = lib.types.attrsOf adapterDefType;
     default = { };
     description = ''
@@ -50,7 +50,7 @@ in
 
       Example:
       ```nix
-      nlib.adapterDefs.mySystem = {
+      nix-lib.adapterDefs.mySystem = {
         namespace = "my";
         hasBuiltinLib = false;
         collector.configPath = [ "myConfigurations" ];

@@ -1,8 +1,8 @@
-# nlib flake.parts module
+# nix-lib flake.parts module
 #
-# Provides nlib.lib.<name> API for defining libs:
+# Provides nix-lib.lib.<name> API for defining libs:
 #
-#   nlib.lib.double = {
+#   nix-lib.lib.double = {
 #     type = lib.types.functionTo lib.types.int;
 #     fn = x: x * 2;
 #     description = "Double a number";
@@ -11,12 +11,12 @@
 #
 # Output structure:
 #   - flake.lib.flake.<name> for pure flake libs (no pkgs dependency)
-#   - flake.lib.nlib for internal utilities
+#   - flake.lib.nix-lib for internal utilities
 #   - legacyPackages.<sys>.lib.<ns>.<name> for module system libs (system-specific)
 #
 { lib, config, ... }:
 let
-  nlibLib = import ../_lib { inherit lib; };
+  nixLibLib = import ../_lib { inherit lib; };
   libDefTypeModule = import ../_lib/libDefType.nix { inherit lib; };
   inherit (libDefTypeModule)
     flattenLibs
@@ -24,9 +24,9 @@ let
     libDefsToMeta
     extractFnsFlat
     ;
-  cfg = config.nlib;
+  cfg = config.nix-lib;
 
-  # Flatten nested lib definitions (nlib.lib.treefmt.check -> "treefmt.check")
+  # Flatten nested lib definitions (nix-lib.lib.treefmt.check -> "treefmt.check")
   flatLibDefs = flattenLibs "" (cfg.lib or { });
 
   # Flake-level libs - flatten, extract, then unflatten for nested output
@@ -59,18 +59,18 @@ let
   allMetaFlat =
     flakeLibsMeta // lib.foldl' (acc: meta: acc // meta) { } (lib.attrValues collectedMeta);
 
-  tests = nlibLib.backends.toBackend cfg.testing.backend allMetaFlat;
+  tests = nixLibLib.backends.toBackend cfg.testing.backend allMetaFlat;
 in
 {
   imports = [
     ./perSystem.nix
     ./systemLibs.nix
-    # Note: adapterDefs is imported by import-tree at the nlib level
+    # Note: adapterDefs is imported by import-tree at the nix-lib level
   ];
 
-  # Define options.nlib.lib for flake-level lib definitions
-  # Supports nested namespaces: nlib.lib.treefmt.check = {...}
-  options.nlib.lib = lib.mkOption {
+  # Define options.nix-lib.lib for flake-level lib definitions
+  # Supports nested namespaces: nix-lib.lib.treefmt.check = {...}
+  options.nix-lib.lib = lib.mkOption {
     type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
     description = ''
@@ -80,7 +80,7 @@ in
       Usage:
       ```nix
       # Flat
-      nlib.lib.double = {
+      nix-lib.lib.double = {
         type = lib.types.functionTo lib.types.int;
         fn = x: x * 2;
         description = "Double a number";
@@ -88,7 +88,7 @@ in
       };
 
       # Nested namespace
-      nlib.lib.treefmt.check = {
+      nix-lib.lib.treefmt.check = {
         type = lib.types.functionTo lib.types.bool;
         fn = x: x == "formatted";
         description = "Check if formatted";
@@ -104,11 +104,11 @@ in
   options.lib.flake = lib.mkOption {
     type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
-    description = "Pure flake-level lib functions (auto-populated from nlib.lib)";
+    description = "Pure flake-level lib functions (auto-populated from nix-lib.lib)";
   };
 
   # Store system-aware collection for perSystem module to access
-  options.nlib._collectedBySystem = lib.mkOption {
+  options.nix-lib._collectedBySystem = lib.mkOption {
     type = lib.types.lazyAttrsOf lib.types.unspecified;
     default = { };
     internal = true;
@@ -116,7 +116,7 @@ in
   };
 
   # Note: flake.tests option is declared by nix-unit module
-  # (nix-unit.modules.flake.default or via nlib's nix-unit.nix import)
+  # (nix-unit.modules.flake.default or via nix-lib's nix-unit.nix import)
 
   config = {
     # Auto-populate lib.flake with extracted functions
@@ -124,12 +124,12 @@ in
 
     # flake.lib exports:
     # - flake.lib.flake.<name> for pure flake libs
-    # - flake.lib.nlib for internal utilities
+    # - flake.lib.nix-lib for internal utilities
     # - flake.lib.<namespace>.<name> for collected libs (from collectorDefs)
     # Also available at legacyPackages.<sys>.lib.<ns> for system-specific access
     flake.lib = {
       inherit (config.lib) flake;
-      nlib = nlibLib;
+      nix-lib = nixLibLib;
     }
     // collectedLibsByNamespace;
 
@@ -137,9 +137,9 @@ in
     flake.tests = tests;
 
     # Store metadata for test collection
-    nlib._flakeLibsMeta = flakeLibsMeta;
+    nix-lib._flakeLibsMeta = flakeLibsMeta;
 
     # Store system-aware collection for systemLibs.nix to use
-    nlib._collectedBySystem = collectedByNamespaceBySystem;
+    nix-lib._collectedBySystem = collectedByNamespaceBySystem;
   };
 }

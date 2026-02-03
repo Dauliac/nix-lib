@@ -1,4 +1,4 @@
-# nlib.collectors (flake-only)
+# nix-lib.collectors (flake-only)
 #
 # Collectors aggregate libs from different module systems (NixOS, home-manager, etc.)
 # into the flake output. Uses adapterDefs for configuration.
@@ -10,7 +10,7 @@
 #
 { lib, config, ... }:
 let
-  cfg = config.nlib;
+  cfg = config.nix-lib;
   adapterDefs = cfg.adapterDefs or { };
 
   # Collector definition submodule type (legacy, for backwards compat)
@@ -32,7 +32,7 @@ let
           default = "flat";
           description = ''
             Collection strategy:
-            - flat: Traverse flake.<configPath>.<name>.config.nlib.<attr>
+            - flat: Traverse flake.<configPath>.<name>.config.nix-lib.<attr>
             - perSystem: Traverse flake.legacyPackages.<system>.<configPath>
           '';
         };
@@ -93,10 +93,10 @@ let
             # Handle empty systemPath - default to "unknown" when path is empty
             system = if systemPath == [ ] then "unknown" else lib.attrByPath systemPath "unknown" cfg';
             # Own libs
-            ownLibs = cfg'.config.nlib.${attr} or { };
+            ownLibs = cfg'.config.nix-lib.${attr} or { };
             # Nested libs from this config (e.g., _nestedFns.home, _nestedFns.vim)
             # These become nested attrs: lib.nixos.home.*, lib.nixos.vim.*
-            nestedFns = cfg'.config.nlib._nestedFns or { };
+            nestedFns = cfg'.config.nix-lib._nestedFns or { };
             # Merge own libs with nested namespaces
             libs = ownLibs // nestedFns;
             existing = acc.${system} or { };
@@ -139,9 +139,9 @@ let
           acc: configName:
           let
             cfg' = configs.${configName} or { };
-            ownLibs = cfg'.config.nlib.${attr} or { };
+            ownLibs = cfg'.config.nix-lib.${attr} or { };
             # Nested libs become nested attrs (e.g., lib.nixos.home.*)
-            nestedFns = cfg'.config.nlib._nestedFns or { };
+            nestedFns = cfg'.config.nix-lib._nestedFns or { };
           in
           lib.recursiveUpdate acc (ownLibs // nestedFns)
         ) { } (lib.attrNames configs);
@@ -194,7 +194,7 @@ let
   ) (lib.filterAttrs (_: def: def.enable or true) adapterDefs);
 in
 {
-  options.nlib.collectorDefs = lib.mkOption {
+  options.nix-lib.collectorDefs = lib.mkOption {
     type = lib.types.attrsOf collectorDefType;
     default = { };
     description = ''
@@ -203,7 +203,7 @@ in
 
       Example:
       ```nix
-      nlib.collectorDefs.mySystem = {
+      nix-lib.collectorDefs.mySystem = {
         pathType = "flat";
         configPath = [ "myConfigurations" ];
         systemPath = [ "config" "nixpkgs" "system" ];
@@ -215,20 +215,20 @@ in
   };
 
   # System-aware collectors (new API)
-  options.nlib.systemCollectors = lib.mkOption {
+  options.nix-lib.systemCollectors = lib.mkOption {
     type = lib.types.attrsOf (lib.types.functionTo (lib.types.lazyAttrsOf lib.types.unspecified));
     default = { };
     description = "System-aware collectors: namespace -> (flakeCfg -> { system -> { name -> fn } })";
   };
 
   # Keep existing options for backward compatibility
-  options.nlib.collectors = lib.mkOption {
+  options.nix-lib.collectors = lib.mkOption {
     type = lib.types.attrsOf (lib.types.functionTo (lib.types.lazyAttrsOf lib.types.unspecified));
     default = { };
     description = "Functions to collect libs from other sources (nixos, home-manager, etc).";
   };
 
-  options.nlib.metaCollectors = lib.mkOption {
+  options.nix-lib.metaCollectors = lib.mkOption {
     type = lib.types.attrsOf (lib.types.functionTo (lib.types.lazyAttrsOf lib.types.unspecified));
     default = { };
     internal = true;
@@ -236,19 +236,19 @@ in
   };
 
   # Built-in collectors from adapterDefs
-  config.nlib.collectorDefs = adapterCollectorDefs;
+  config.nix-lib.collectorDefs = adapterCollectorDefs;
 
   # Generate system-aware collector functions
-  config.nlib.systemCollectors = lib.mapAttrs (
+  config.nix-lib.systemCollectors = lib.mapAttrs (
     _: def: mkSystemAwareCollector (def // { attr = "_fns"; })
   ) enabledDefsByNamespace;
 
   # Generate legacy flat collector functions (backwards compat)
-  config.nlib.collectors = lib.mapAttrs (
+  config.nix-lib.collectors = lib.mapAttrs (
     _: def: mkFlatCollector (def // { attr = "_fns"; })
   ) enabledDefsByNamespace;
 
-  config.nlib.metaCollectors = lib.mapAttrs (
+  config.nix-lib.metaCollectors = lib.mapAttrs (
     _: def: mkFlatCollector (def // { attr = "_libsMeta"; })
   ) enabledDefsByNamespace;
 }

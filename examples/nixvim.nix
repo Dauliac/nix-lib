@@ -1,24 +1,24 @@
 # Example: Defining libs in nixvim module
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within nixvim config)
 # Output at: flake.lib.vim.<name> (collected at flake-parts level)
 #
 # Usage in nixvimConfigurations:
 #   modules = [
-#     nlib.nixvimModules.default
+#     nix-lib.nixvimModules.default
 #     {
-#       nlib.enable = true;
-#       nlib.lib.myHelper = { ... };
+#       nix-lib.enable = true;
+#       nix-lib.lib.myHelper = { ... };
 #     }
 #   ];
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # Nixvim-specific lib functions
-  nlib.lib.mkKeymap = {
+  nix-lib.lib.mkKeymap = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -52,7 +52,7 @@
     };
   };
 
-  nlib.lib.enablePlugin = {
+  nix-lib.lib.enablePlugin = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       plugins.${name}.enable = true;
@@ -66,7 +66,7 @@
     };
   };
 
-  nlib.lib.setOption = {
+  nix-lib.lib.setOption = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       { name, value }:

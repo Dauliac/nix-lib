@@ -1,6 +1,6 @@
 # Example: Custom Module System Integration
 #
-# This example demonstrates how to extend nlib for a custom/fictive module system.
+# This example demonstrates how to extend nix-lib for a custom/fictive module system.
 # It shows both creating an adapter and defining a collector for the module system.
 #
 # The pattern works for any NixOS-style module system:
@@ -24,10 +24,10 @@
 # ```nix
 # { inputs, ... }:
 # let
-#   nlib = inputs.nlib;
+#   nix-lib = inputs.nix-lib;
 # in {
 #   # Create adapter for your custom module system
-#   flake.mySystemModules.default = nlib.lib.nlib.mkAdapter {
+#   flake.mySystemModules.default = nix-lib.lib.nix-lib.mkAdapter {
 #     name = "my-custom-system";
 #     namespace = "my";
 #   };
@@ -44,7 +44,7 @@
 # ```nix
 # { ... }:
 # {
-#   nlib.collectorDefs.my = {
+#   nix-lib.collectorDefs.my = {
 #     pathType = "flat";                    # or "perSystem"
 #     configPath = [ "myConfigurations" ];  # flake.myConfigurations.*
 #     namespace = "my";                     # flake.lib.my.*
@@ -60,10 +60,10 @@
 
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # Define libs specific to your module system
-  nlib.lib.mkComponent = {
+  nix-lib.lib.mkComponent = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -99,7 +99,7 @@
     };
   };
 
-  nlib.lib.mkPlugin = {
+  nix-lib.lib.mkPlugin = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -133,7 +133,7 @@
     };
   };
 
-  nlib.lib.enableFeature = {
+  nix-lib.lib.enableFeature = {
     type = lib.types.functionTo lib.types.attrs;
     fn = feature: {
       features.${feature}.enable = true;
@@ -158,8 +158,8 @@
 # # Evaluate a configuration
 # flake.myConfigurations.production = lib.evalModules {
 #   modules = [
-#     # Import nlib adapter
-#     nlib.mySystemModules.default
+#     # Import nix-lib adapter
+#     nix-lib.mySystemModules.default
 #
 #     # Your lib definitions
 #     ./custom-module-system.nix  # (this file)

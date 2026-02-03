@@ -1,11 +1,11 @@
-# nlib system-aware lib exports
+# nix-lib system-aware lib exports
 #
 # Exports collected libs to legacyPackages.<sys>.lib.<ns>.<name>
 # Also creates nested aliases (e.g., lib.home = lib.nixos.home)
 #
 { lib, config, ... }:
 let
-  cfg = config.nlib;
+  cfg = config.nix-lib;
 
   # System-aware collection: { namespace -> { system -> libs } }
   collectedByNamespaceBySystem = cfg._collectedBySystem or { };

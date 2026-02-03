@@ -1,4 +1,4 @@
-# nlib - Nix library utilities
+# nix-lib - Nix library utilities
 #
 # Exports:
 #   - mkAdapter: Factory to create adapters for any module system

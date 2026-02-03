@@ -1,24 +1,24 @@
 # Example: Defining libs in home-manager module
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within home-manager config)
 # Output at: flake.lib.home.<name> (collected at flake-parts level)
 #
 # Usage in homeConfigurations or as NixOS home-manager module:
 #   modules = [
-#     nlib.homeModules.default
+#     nix-lib.homeModules.default
 #     {
-#       nlib.enable = true;
-#       nlib.lib.myHelper = { ... };
+#       nix-lib.enable = true;
+#       nix-lib.lib.myHelper = { ... };
 #     }
 #   ];
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # Home-manager specific lib functions
-  nlib.lib.mkAlias = {
+  nix-lib.lib.mkAlias = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       { name, command }:
@@ -39,7 +39,7 @@
     };
   };
 
-  nlib.lib.mkGitConfig = {
+  nix-lib.lib.mkGitConfig = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       { name, email }:
@@ -66,7 +66,7 @@
     };
   };
 
-  nlib.lib.enableProgram = {
+  nix-lib.lib.enableProgram = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       programs.${name}.enable = true;
@@ -84,7 +84,7 @@
   # Vim libs (when nixvim is used inside home-manager)
   # These get propagated up to NixOS at lib.vim.*
   # ============================================================
-  nlib.lib.vim.mkKeymap = {
+  nix-lib.lib.vim.mkKeymap = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {

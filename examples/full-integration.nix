@@ -1,4 +1,4 @@
-# Full integration example - composes ALL nlib examples
+# Full integration example - composes ALL nix-lib examples
 #
 # This flake.parts module demonstrates:
 # 1. Flake-level libs (pure, no pkgs)
@@ -21,8 +21,8 @@ let
     nix-darwin
     system-manager
     ;
-  # nlib is passed via inputs.nlib from the test flake
-  nlib = inputs.nlib or inputs.self;
+  # nix-lib is passed via inputs.nlib from the test flake
+  nix-lib = inputs.nix-lib or inputs.self;
 in
 {
   # ============================================================
@@ -45,8 +45,8 @@ in
   flake.nixosConfigurations.test = nixpkgs.lib.nixosSystem {
     system = "x86_64-linux";
     modules = [
-      # nlib NixOS adapter (libs available at config.lib.*)
-      nlib.nixosModules.default
+      # nix-lib NixOS adapter (libs available at config.lib.*)
+      nix-lib.nixosModules.default
 
       # NixOS-specific libs
       ./nixos.nix
@@ -62,19 +62,19 @@ in
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
 
-        # Home-manager user with nlib libs
+        # Home-manager user with nix-lib libs
         home-manager.users.test =
           { ... }:
           {
             imports = [
-              # nlib home-manager adapter
-              nlib.homeModules.default
+              # nix-lib home-manager adapter
+              nix-lib.homeModules.default
 
               # Home-manager specific libs
               ./home-manager.nix
 
-              # Nixvim inside home-manager (no separate nlib adapter needed)
-              # The home-manager nlib adapter handles nixvim libs too
+              # Nixvim inside home-manager (no separate nix-lib adapter needed)
+              # The home-manager nix-lib adapter handles nixvim libs too
               nixvim.homeManagerModules.nixvim
             ];
 
@@ -104,8 +104,8 @@ in
   flake.nixosConfigurations.test-user-services = nixpkgs.lib.nixosSystem {
     system = "x86_64-linux";
     modules = [
-      # nlib NixOS adapter
-      nlib.nixosModules.default
+      # nix-lib NixOS adapter
+      nix-lib.nixosModules.default
 
       # User service helpers (mkUserService, mkUserTimer, mkXdgConfigFile)
       ./system-manager-nixos.nix
@@ -134,8 +134,8 @@ in
   flake.homeConfigurations.test = home-manager.lib.homeManagerConfiguration {
     pkgs = nixpkgs.legacyPackages.x86_64-linux;
     modules = [
-      # nlib home-manager adapter
-      nlib.homeModules.default
+      # nix-lib home-manager adapter
+      nix-lib.homeModules.default
 
       # Home-manager specific libs
       ./home-manager.nix
@@ -154,8 +154,8 @@ in
   # ============================================================
   flake.nixvimConfigurations.test = nixvim.lib.evalNixvim {
     modules = [
-      # nlib nixvim adapter
-      nlib.nixvimModules.default
+      # nix-lib nixvim adapter
+      nix-lib.nixvimModules.default
 
       # Nixvim-specific libs
       ./nixvim.nix
@@ -171,8 +171,8 @@ in
   flake.darwinConfigurations.test = nix-darwin.lib.darwinSystem {
     system = "x86_64-darwin";
     modules = [
-      # nlib darwin adapter
-      nlib.darwinModules.default
+      # nix-lib darwin adapter
+      nix-lib.darwinModules.default
 
       # Darwin-specific libs
       ./darwin.nix
@@ -185,13 +185,13 @@ in
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
 
-        # Home-manager user with nlib libs
+        # Home-manager user with nix-lib libs
         home-manager.users.test =
           { ... }:
           {
             imports = [
-              # nlib home-manager adapter
-              nlib.homeModules.default
+              # nix-lib home-manager adapter
+              nix-lib.homeModules.default
 
               # Home-manager specific libs (same as NixOS nested)
               ./home-manager.nix
@@ -219,8 +219,8 @@ in
   # ============================================================
   flake.systemConfigs.test = system-manager.lib.makeSystemConfig {
     modules = [
-      # nlib system-manager adapter
-      nlib.systemManagerModules.default
+      # nix-lib system-manager adapter
+      nix-lib.systemManagerModules.default
 
       # System-manager specific libs
       ./system-manager.nix
@@ -234,11 +234,11 @@ in
   # 8. Wrapper configuration (nix-wrapper-modules style)
   # ============================================================
   # nix-wrapper-modules uses lib.evalModules like system-manager
-  # This demonstrates nlib integration for wrapper-based module systems
+  # This demonstrates nix-lib integration for wrapper-based module systems
   flake.wrapperConfigurations.test = nixpkgs.lib.evalModules {
     modules = [
-      # nlib wrapper adapter
-      nlib.wrapperModules.default
+      # nix-lib wrapper adapter
+      nix-lib.wrapperModules.default
 
       # Wrapper-specific libs
       ./wrapper-modules.nix

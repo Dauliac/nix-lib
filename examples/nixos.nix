@@ -1,6 +1,6 @@
 # Example: Defining libs in NixOS module
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within NixOS config)
 # Output at: flake.lib.nixos.<name> (collected at flake-parts level)
 #
@@ -11,19 +11,19 @@
 #
 # Usage in nixosConfigurations:
 #   modules = [
-#     nlib.nixosModules.default
+#     nix-lib.nixosModules.default
 #     {
-#       nlib.enable = true;
-#       nlib.lib.myHelper = { ... };
+#       nix-lib.enable = true;
+#       nix-lib.lib.myHelper = { ... };
 #     }
 #   ];
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # NixOS-specific lib functions
-  nlib.lib.mkSystemdService = {
+  nix-lib.lib.mkSystemdService = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       systemd.services.${name} = {
@@ -43,7 +43,7 @@
     };
   };
 
-  nlib.lib.enableService = {
+  nix-lib.lib.enableService = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       services.${name}.enable = true;
@@ -57,7 +57,7 @@
     };
   };
 
-  nlib.lib.openFirewallPort = {
+  nix-lib.lib.openFirewallPort = {
     type = lib.types.functionTo lib.types.attrs;
     fn = port: {
       networking.firewall.allowedTCPPorts = [ port ];

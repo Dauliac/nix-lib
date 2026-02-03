@@ -89,7 +89,7 @@ let
                 expected = true;
               }
             else
-              throw "nlib: assertion must have 'expected' or 'check' attribute";
+              throw "nix-lib: assertion must have 'expected' or 'check' attribute";
         }
       ) (builtins.length t.assertions)
     else

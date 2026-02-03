@@ -1,7 +1,7 @@
-# nlib.testing
+# nix-lib.testing
 { lib, ... }:
 {
-  options.nlib.testing = {
+  options.nix-lib.testing = {
     backend = lib.mkOption {
       type = lib.types.enum [
         "nix-unit"

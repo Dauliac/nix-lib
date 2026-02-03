@@ -1,11 +1,11 @@
-# Contributing to nlib
+# Contributing to nix-lib
 
 ## Development Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/Dauliac/nlib
-cd nlib
+git clone https://github.com/Dauliac/nix-lib
+cd nix-lib
 
 # Enter dev shell
 nix develop
@@ -27,12 +27,12 @@ nix run .#build-all
 ## Project Structure
 
 ```
-nlib/
-├── modules/           # Core nlib modules
-│   ├── nlib/          # Main module implementation
+nix-lib/
+├── modules/           # Core nix-lib modules
+│   ├── nix-lib/       # Main module implementation
 │   │   ├── _lib/      # Internal library (mkAdapter, types)
 │   │   └── _all.nix   # Common options
-│   └── nlib-outputs.nix  # Flake outputs (adapters)
+│   └── nix-lib-outputs.nix  # Flake outputs (adapters)
 ├── examples/          # Example configurations
 │   ├── flake-parts.nix
 │   ├── nixos.nix
@@ -44,9 +44,9 @@ nlib/
 
 ## Adding a New Adapter
 
-1. Add the adapter name to `namespaces` in `modules/nlib/_lib/mkAdapter.nix`
+1. Add the adapter name to `namespaces` in `modules/nix-lib/_lib/mkAdapter.nix`
 2. Add nested system configuration if applicable in `nestedSystems`
-3. Export the module in `modules/nlib-outputs.nix`
+3. Export the module in `modules/nix-lib-outputs.nix`
 4. Add an example in `examples/`
 5. Add tests in `tests/flake.nix`
 
@@ -55,7 +55,7 @@ nlib/
 Tests are defined inline with lib definitions:
 
 ```nix
-nlib.lib.myFunc = {
+nix-lib.lib.myFunc = {
   type = lib.types.functionTo lib.types.int;
   fn = x: x * 2;
   description = "Double a number";

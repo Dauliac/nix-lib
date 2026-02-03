@@ -1,24 +1,24 @@
 # Example: Defining libs in nix-darwin module
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within darwin config)
 # Output at: flake.lib.darwin.<name> (collected at flake-parts level)
 #
 # Usage in darwinConfigurations:
 #   modules = [
-#     nlib.darwinModules.default
+#     nix-lib.darwinModules.default
 #     {
-#       nlib.enable = true;
-#       nlib.lib.myHelper = { ... };
+#       nix-lib.enable = true;
+#       nix-lib.lib.myHelper = { ... };
 #     }
 #   ];
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # Nix-darwin specific lib functions
-  nlib.lib.mkBrewPackage = {
+  nix-lib.lib.mkBrewPackage = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       homebrew.brews = [ name ];
@@ -32,7 +32,7 @@
     };
   };
 
-  nlib.lib.mkBrewCask = {
+  nix-lib.lib.mkBrewCask = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
       homebrew.casks = [ name ];
@@ -46,7 +46,7 @@
     };
   };
 
-  nlib.lib.setDefault = {
+  nix-lib.lib.setDefault = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {

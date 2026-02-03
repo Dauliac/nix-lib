@@ -6,10 +6,10 @@
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # NixOS-integrated system-manager helpers
-  nlib.lib.mkUserService = {
+  nix-lib.lib.mkUserService = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -49,7 +49,7 @@
     };
   };
 
-  nlib.lib.mkUserTimer = {
+  nix-lib.lib.mkUserTimer = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -91,7 +91,7 @@
     };
   };
 
-  nlib.lib.mkXdgConfigFile = {
+  nix-lib.lib.mkXdgConfigFile = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {

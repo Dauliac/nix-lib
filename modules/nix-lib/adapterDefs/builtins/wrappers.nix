@@ -3,7 +3,7 @@
 # Shared by both nix-wrapper-modules and Lassulus/wrappers
 { lib, ... }:
 {
-  config.nlib.adapterDefs.wrappers = lib.mkDefault {
+  config.nix-lib.adapterDefs.wrappers = lib.mkDefault {
     namespace = "wrappers";
     hasBuiltinLib = false;
     collector = {

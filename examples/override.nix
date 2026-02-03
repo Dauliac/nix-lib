@@ -1,6 +1,6 @@
 # Example: Private libs (visible = false)
 #
-# nlib uses the module system, so you can:
+# nix-lib uses the module system, so you can:
 # - Mark functions as private with visible = false
 # - Private functions are tested but not exported
 #
@@ -11,7 +11,7 @@
   # ============================================================
 
   # Private: not exported to config.lib, but still tested
-  nlib.lib._internal = {
+  nix-lib.lib._internal = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * x;
     description = "Internal helper - square a number";
@@ -23,7 +23,7 @@
   };
 
   # Public function that uses private helper logic
-  nlib.lib.sumOfSquares = {
+  nix-lib.lib.sumOfSquares = {
     type = lib.types.functionTo lib.types.int;
     fn =
       { a, b }:
@@ -46,15 +46,15 @@
   # ============================================================
   #
   # Private (not exported, still tested):
-  #   nlib.lib._helper = {
+  #   nix-lib.lib._helper = {
   #     visible = false;
   #     fn = ...;
   #   };
   #
   # Override (must be in a SEPARATE module):
   #   # base.nix
-  #   nlib.lib.foo = { fn = x: defaultImpl; ... };
+  #   nix-lib.lib.foo = { fn = x: defaultImpl; ... };
   #
   #   # override.nix (imported after base.nix)
-  #   nlib.lib.foo.fn = lib.mkForce (x: newImpl);
+  #   nix-lib.lib.foo.fn = lib.mkForce (x: newImpl);
 }

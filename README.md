@@ -1,4 +1,4 @@
-# nlib
+# nix-lib
 
 A Nix library framework implementing the **Lib Modules Pattern** - where library functions are defined as module options with built-in types, tests, and documentation.
 
@@ -15,7 +15,7 @@ Writing Nix libraries typically means:
 Define functions as **config values** that bundle everything together:
 
 ```nix
-nlib.lib.double = {
+nix-lib.lib.double = {
   type = lib.types.functionTo lib.types.int;
   fn = x: x * 2;
   description = "Double a number";
@@ -34,14 +34,14 @@ This gives you:
 
 ```nix
 {
-  inputs.nlib.url = "github:Dauliac/nlib";
+  inputs.nix-lib.url = "github:Dauliac/nix-lib";
 
-  outputs = { nlib, ... }:
-    nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [ nlib.flakeModules.default ];
+  outputs = { nix-lib, ... }:
+    nix-lib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [ nix-lib.flakeModules.default ];
 
       # Define a pure flake-level lib
-      nlib.lib.double = {
+      nix-lib.lib.double = {
         type = lib.types.functionTo lib.types.int;
         fn = x: x * 2;
         description = "Double a number";
@@ -57,10 +57,10 @@ See `examples/` for complete working examples of each module system.
 
 ### Defining Libraries
 
-Define libs at `nlib.lib.<name>` (supports nested namespaces like `nlib.lib.utils.helper`):
+Define libs at `nix-lib.lib.<name>` (supports nested namespaces like `nix-lib.lib.utils.helper`):
 
 ```nix
-nlib.lib.myFunc = {
+nix-lib.lib.myFunc = {
   type = lib.types.functionTo lib.types.int;  # Required: function signature
   fn = x: x * 2;                               # Required: implementation
   description = "What it does";                # Required: documentation
@@ -76,14 +76,14 @@ nlib.lib.myFunc = {
 
 ```mermaid
 flowchart TB
-    subgraph Input["Define (nlib.lib.*)"]
-        D1["nlib.lib.myFunc = {<br/>type, fn, description, tests}"]
+    subgraph Input["Define (nix-lib.lib.*)"]
+        D1["nix-lib.lib.myFunc = {<br/>type, fn, description, tests}"]
     end
 
-    subgraph Process["nlib Processing"]
+    subgraph Process["nix-lib Processing"]
         P1["Extract fn → config.lib.*"]
         P2["Extract tests → flake.tests"]
-        P3["Store metadata → nlib._libsMeta"]
+        P3["Store metadata → nix-lib._libsMeta"]
     end
 
     subgraph Output["Outputs"]
@@ -102,7 +102,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph Define["Define (nlib.lib.*)"]
+    subgraph Define["Define (nix-lib.lib.*)"]
         D1[type + fn + description + tests]
     end
 
@@ -141,18 +141,18 @@ Libs defined in different module systems are available at different paths:
 
 | Defined in | Module to import | Access within module | Flake output |
 |------------|------------------|---------------------|--------------|
-| flake-parts `nlib.lib.*` | `flakeModules.default` | `config.lib.flake.<name>` | `flake.lib.flake.<name>` |
-| perSystem `nlib.lib.*` | `flakeModules.default` | `config.lib.<name>` | `legacyPackages.<system>.nlib.<name>` |
+| flake-parts `nix-lib.lib.*` | `flakeModules.default` | `config.lib.flake.<name>` | `flake.lib.flake.<name>` |
+| perSystem `nix-lib.lib.*` | `flakeModules.default` | `config.lib.<name>` | `legacyPackages.<system>.nix-lib.<name>` |
 
 #### System Configuration Libs
 
 | Defined in | Module to import | Access within module | Flake output |
 |------------|------------------|---------------------|--------------|
-| NixOS `nlib.lib.*` | `nixosModules.default` | `config.lib.<name>` | `flake.lib.nixos.<name>` |
-| home-manager `nlib.lib.*` | `homeModules.default` | `config.lib.<name>` | `flake.lib.home.<name>` |
-| nix-darwin `nlib.lib.*` | `darwinModules.default` | `config.lib.<name>` | `flake.lib.darwin.<name>` |
-| nixvim `nlib.lib.*` | `nixvimModules.default` | `config.lib.<name>` | `flake.lib.vim.<name>` |
-| system-manager `nlib.lib.*` | `systemManagerModules.default` | `config.lib.<name>` | `flake.lib.system.<name>` |
+| NixOS `nix-lib.lib.*` | `nixosModules.default` | `config.lib.<name>` | `flake.lib.nixos.<name>` |
+| home-manager `nix-lib.lib.*` | `homeModules.default` | `config.lib.<name>` | `flake.lib.home.<name>` |
+| nix-darwin `nix-lib.lib.*` | `darwinModules.default` | `config.lib.<name>` | `flake.lib.darwin.<name>` |
+| nixvim `nix-lib.lib.*` | `nixvimModules.default` | `config.lib.<name>` | `flake.lib.vim.<name>` |
+| system-manager `nix-lib.lib.*` | `systemManagerModules.default` | `config.lib.<name>` | `flake.lib.system.<name>` |
 
 ### Nested Module Propagation
 
@@ -165,11 +165,11 @@ flowchart LR
     end
 
     subgraph home-manager
-        H[nlib.lib.*]
+        H[nix-lib.lib.*]
     end
 
     subgraph nixvim
-        V[nlib.lib.*]
+        V[nix-lib.lib.*]
     end
 
     H -->|home.*| N
@@ -181,11 +181,11 @@ flowchart LR
 
 | Parent module | Nested module | Libs defined in nested | Access in parent |
 |---------------|---------------|------------------------|------------------|
-| NixOS | home-manager | `nlib.lib.foo` | `config.lib.home.foo` |
-| NixOS | home-manager → nixvim | `nlib.lib.bar` | `config.lib.home.vim.bar` |
-| nix-darwin | home-manager | `nlib.lib.foo` | `config.lib.home.foo` |
-| nix-darwin | home-manager → nixvim | `nlib.lib.bar` | `config.lib.home.vim.bar` |
-| home-manager | nixvim | `nlib.lib.bar` | `config.lib.vim.bar` |
+| NixOS | home-manager | `nix-lib.lib.foo` | `config.lib.home.foo` |
+| NixOS | home-manager → nixvim | `nix-lib.lib.bar` | `config.lib.home.vim.bar` |
+| nix-darwin | home-manager | `nix-lib.lib.foo` | `config.lib.home.foo` |
+| nix-darwin | home-manager → nixvim | `nix-lib.lib.bar` | `config.lib.home.vim.bar` |
+| home-manager | nixvim | `nix-lib.lib.bar` | `config.lib.vim.bar` |
 
 #### Namespace Prefixes
 
@@ -202,8 +202,8 @@ All libs are collected and exported at the flake level under `flake.lib.<namespa
 
 | Namespace | Source | Description |
 |-----------|--------|-------------|
-| `flake.lib.flake.*` | `nlib.lib.*` in flake-parts | Pure flake-level libs |
-| `flake.lib.nlib.*` | nlib internals | `mkAdapter`, `backends` utilities |
+| `flake.lib.flake.*` | `nix-lib.lib.*` in flake-parts | Pure flake-level libs |
+| `flake.lib.nix-lib.*` | nix-lib internals | `mkAdapter`, `backends` utilities |
 | `flake.lib.nixos.*` | `nixosConfigurations.*.config.lib.*` | NixOS configuration libs |
 | `flake.lib.home.*` | `homeConfigurations.*.config.lib.*` | Standalone home-manager libs |
 | `flake.lib.darwin.*` | `darwinConfigurations.*.config.lib.*` | nix-darwin libs |
@@ -219,13 +219,13 @@ Import the adapter for your module system. Libs are automatically available at `
 
 | Module | Import path |
 |--------|-------------|
-| `flakeModules.default` | `inputs.nlib.flakeModules.default` |
-| `nixosModules.default` | `nlib.nixosModules.default` |
-| `homeModules.default` | `nlib.homeModules.default` |
-| `darwinModules.default` | `nlib.darwinModules.default` |
-| `nixvimModules.default` | `nlib.nixvimModules.default` |
-| `systemManagerModules.default` | `nlib.systemManagerModules.default` |
-| `wrapperModules.default` | `nlib.wrapperModules.default` |
+| `flakeModules.default` | `inputs.nix-lib.flakeModules.default` |
+| `nixosModules.default` | `nix-lib.nixosModules.default` |
+| `homeModules.default` | `nix-lib.homeModules.default` |
+| `darwinModules.default` | `nix-lib.darwinModules.default` |
+| `nixvimModules.default` | `nix-lib.nixvimModules.default` |
+| `systemManagerModules.default` | `nix-lib.systemManagerModules.default` |
+| `wrapperModules.default` | `nix-lib.wrapperModules.default` |
 
 ## Test Formats
 
@@ -266,7 +266,7 @@ tests."test name" = {
 
 ```nix
 # Create adapter for your custom module system
-flake.myModules.default = inputs.nlib.outputs.lib.nlib.mkAdapter {
+flake.myModules.default = inputs.nix-lib.outputs.lib.nix-lib.mkAdapter {
   name = "my-module-system";
   namespace = "my";
 };
@@ -275,8 +275,8 @@ flake.myModules.default = inputs.nlib.outputs.lib.nlib.mkAdapter {
 { lib, config, ... }: {
   imports = [ myModules.default ];
 
-  nlib.enable = true;
-  nlib.lib.myHelper = {
+  nix-lib.enable = true;
+  nix-lib.lib.myHelper = {
     type = lib.types.functionTo lib.types.attrs;
     fn = x: { result = x; };
     description = "Custom helper";
@@ -289,15 +289,15 @@ flake.myModules.default = inputs.nlib.outputs.lib.nlib.mkAdapter {
 ### Requirements
 
 - Module system must support NixOS-style modules (`config`, `lib`, `options` args)
-- No domain-specific options required - mkAdapter only sets `nlib.*` and `lib.*`
+- No domain-specific options required - mkAdapter only sets `nix-lib.*` and `lib.*`
 
 ## Custom Collectors
 
-Collectors aggregate libs from flake outputs into `flake.lib.<namespace>`. Define custom collectors via `nlib.collectorDefs`:
+Collectors aggregate libs from flake outputs into `flake.lib.<namespace>`. Define custom collectors via `nix-lib.collectorDefs`:
 
 ```nix
 # In your flake-parts module
-nlib.collectorDefs.wrappers = {
+nix-lib.collectorDefs.wrappers = {
   pathType = "flat";                      # "flat" or "perSystem"
   configPath = [ "wrapperConfigurations" ]; # Path in flake outputs
   namespace = "wrappers";                 # Output at flake.lib.wrappers.*
@@ -309,24 +309,24 @@ nlib.collectorDefs.wrappers = {
 
 | Type | Description | Collection Path |
 |------|-------------|-----------------|
-| `flat` | Direct configuration set | `flake.<configPath>.<name>.config.nlib._fns` |
+| `flat` | Direct configuration set | `flake.<configPath>.<name>.config.nix-lib._fns` |
 | `perSystem` | Per-system in legacyPackages | `flake.legacyPackages.<system>.<configPath>` |
 
 ### Disabling Built-in Collectors
 
 ```nix
-nlib.collectorDefs.nixos.enable = false;  # Disable NixOS collection
+nix-lib.collectorDefs.nixos.enable = false;  # Disable NixOS collection
 ```
 
 ### Overriding Namespaces
 
 ```nix
-nlib.collectorDefs.nixos.namespace = "os";  # flake.lib.os.* instead of flake.lib.nixos.*
+nix-lib.collectorDefs.nixos.namespace = "os";  # flake.lib.os.* instead of flake.lib.nixos.*
 ```
 
 ## Testing
 
-nlib uses [nix-unit](https://github.com/nix-community/nix-unit) for testing. Tests defined in `nlib.lib.*.tests` are automatically converted to nix-unit format.
+nix-lib uses [nix-unit](https://github.com/nix-community/nix-unit) for testing. Tests defined in `nix-lib.lib.*.tests` are automatically converted to nix-unit format.
 
 ### Running Tests
 
@@ -347,8 +347,8 @@ Output:
 ```mermaid
 flowchart TB
     subgraph Define["Define Libraries"]
-        L1["nlib.lib.double = {<br/>fn, type, tests...}"]
-        L2["nlib.lib.add = {<br/>fn, type, tests...}"]
+        L1["nix-lib.lib.double = {<br/>fn, type, tests...}"]
+        L2["nix-lib.lib.add = {<br/>fn, type, tests...}"]
     end
 
     subgraph BDD["BDD Tests (tests/bdd/)"]
@@ -389,7 +389,7 @@ Tests are organized in three layers:
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| **Unit tests** | `nlib.lib.*.tests` | Function behavior (defined with libs) |
+| **Unit tests** | `nix-lib.lib.*.tests` | Function behavior (defined with libs) |
 | **BDD tests** | `tests/bdd/*.nix` | Structure validation (namespaces, adapters) |
 | **perSystem tests** | `perSystem.nix-unit.tests` | System-specific lib checks |
 
@@ -400,7 +400,7 @@ All tests are merged into `flake.tests` and run together via `nix-unit --flake .
 Tests are defined alongside lib definitions:
 
 ```nix
-nlib.lib.add = {
+nix-lib.lib.add = {
   type = lib.types.functionTo lib.types.int;
   fn = { a, b }: a + b;
   description = "Add two numbers";

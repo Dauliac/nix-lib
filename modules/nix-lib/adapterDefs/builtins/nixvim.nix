@@ -1,7 +1,7 @@
 # nixvim adapter definition
 { lib, ... }:
 {
-  config.nlib.adapterDefs.nixvim = lib.mkDefault {
+  config.nix-lib.adapterDefs.nixvim = lib.mkDefault {
     namespace = "vim";
     hasBuiltinLib = false;
     collector = {

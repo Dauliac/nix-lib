@@ -1,4 +1,4 @@
-# Coverage calculation for nlib
+# Coverage calculation for nix-lib
 #
 # Calculates test coverage metrics for library functions
 #

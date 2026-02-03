@@ -6,7 +6,7 @@
   ];
 
   flake-file = {
-    description = "nlib - Nix library module with tested, typed, documented functions";
+    description = "nix-lib - Nix library module with tested, typed, documented functions";
     inputs = {
       nix-unit = {
         url = "github:nix-community/nix-unit";

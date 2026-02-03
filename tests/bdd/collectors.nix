@@ -18,7 +18,7 @@ let
     darwinNonEmpty = lib.hasAttr "darwin" flakeLib && (flakeLib.darwin or { }) != { };
     wrappersNonEmpty = lib.hasAttr "wrappers" flakeLib && (flakeLib.wrappers or { }) != { };
     flakeNonEmpty = lib.hasAttr "flake" flakeLib && (flakeLib.flake or { }) != { };
-    nlibNonEmpty = lib.hasAttr "nlib" flakeLib && (flakeLib.nlib or { }) != { };
+    nixLibNonEmpty = lib.hasAttr "nix-lib" flakeLib && (flakeLib.nix-lib or { }) != { };
     nixosHomeNonEmpty =
       lib.hasAttr "home" (flakeLib.nixos or { }) && (flakeLib.nixos.home or { }) != { };
     nixosHomeVimNonEmpty =
@@ -59,8 +59,8 @@ in
       expr = results.flakeNonEmpty;
       expected = true;
     };
-    "test_collectors_flakeLib_nlib_not_empty" = {
-      expr = results.nlibNonEmpty;
+    "test_collectors_flakeLib_nix_lib_not_empty" = {
+      expr = results.nixLibNonEmpty;
       expected = true;
     };
     "test_collectors_nested_nixosHome_not_empty" = {

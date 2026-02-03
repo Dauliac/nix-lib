@@ -1,12 +1,12 @@
 # Example: Defining libs in perSystem (with pkgs dependency)
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within perSystem)
-# Output at: legacyPackages.<system>.nlib.<name>
+# Output at: legacyPackages.<system>.nix-lib.<name>
 #
 # Usage in flake.nix:
 #   perSystem = { pkgs, lib, config, ... }: {
-#     nlib.lib.writeGreeting = { ... };
+#     nix-lib.lib.writeGreeting = { ... };
 #     packages.greeting = config.lib.writeGreeting "World";
 #   };
 #
@@ -18,7 +18,7 @@
 }:
 {
   # Per-system lib - depends on pkgs
-  nlib.lib.writeGreeting = {
+  nix-lib.lib.writeGreeting = {
     type = lib.types.functionTo lib.types.package;
     fn = name: pkgs.writeText "greeting-${name}" "Hello, ${name}!";
     description = "Create a greeting file for a person";
@@ -28,7 +28,7 @@
     };
   };
 
-  nlib.lib.mkScript = {
+  nix-lib.lib.mkScript = {
     type = lib.types.functionTo lib.types.package;
     fn = { name, script }: pkgs.writeShellScriptBin name script;
     description = "Create a shell script package";
@@ -41,7 +41,7 @@
     };
   };
 
-  nlib.lib.wrapWithEnv = {
+  nix-lib.lib.wrapWithEnv = {
     type = lib.types.functionTo lib.types.package;
     fn =
       {
@@ -79,7 +79,7 @@
     say-hello = config.lib.mkScript {
       name = "say-hello";
       script = ''
-        echo "Hello from nlib!"
+        echo "Hello from nix-lib!"
       '';
     };
     list-files = config.lib.mkScript {

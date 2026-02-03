@@ -1,17 +1,17 @@
 # Example: Defining libs in flake-parts (pure, no pkgs dependency)
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.flake.<name> (within flake-parts)
 # Output at: flake.lib.flake.<name>
 #
 # Usage in flake.nix:
-#   imports = [ nlib.flakeModules.default ];
-#   nlib.lib.double = { ... };
+#   imports = [ nix-lib.flakeModules.default ];
+#   nix-lib.lib.double = { ... };
 #
 { lib, ... }:
 {
   # Pure flake-level lib - no system/pkgs dependency
-  nlib.lib.double = {
+  nix-lib.lib.double = {
     type = lib.types.functionTo lib.types.int;
     fn = x: x * 2;
     description = "Double a number";
@@ -25,7 +25,7 @@
     };
   };
 
-  nlib.lib.add = {
+  nix-lib.lib.add = {
     type = lib.types.functionTo lib.types.int;
     fn = { a, b }: a + b;
     description = "Add two integers";
@@ -38,7 +38,7 @@
     };
   };
 
-  nlib.lib.compose = {
+  nix-lib.lib.compose = {
     type = lib.types.functionTo lib.types.unspecified;
     fn =
       {
@@ -72,6 +72,6 @@
   #   };                                                         # => 12
   #
   # From flake outputs (e.g., in another flake):
-  #   doubled = nlib.lib.flake.double 5;                         # => 10
-  #   sum = nlib.lib.flake.add { a = 2; b = 3; };                # => 5
+  #   doubled = nix-lib.lib.flake.double 5;                         # => 10
+  #   sum = nix-lib.lib.flake.add { a = 2; b = 3; };                # => 5
 }

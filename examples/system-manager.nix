@@ -1,24 +1,24 @@
 # Example: Defining libs in system-manager module
 #
-# Define at: nlib.lib.<name>
+# Define at: nix-lib.lib.<name>
 # Use at: config.lib.<name> (within system-manager config)
 # Output at: flake.lib.system.<name> (collected at flake-parts level)
 #
 # Usage in systemConfigs:
 #   modules = [
-#     nlib.systemManagerModules.default
+#     nix-lib.systemManagerModules.default
 #     {
-#       nlib.enable = true;
-#       nlib.lib.myHelper = { ... };
+#       nix-lib.enable = true;
+#       nix-lib.lib.myHelper = { ... };
 #     }
 #   ];
 #
 { lib, ... }:
 {
-  nlib.enable = true;
+  nix-lib.enable = true;
 
   # System-manager specific lib functions
-  nlib.lib.mkSystemdService = {
+  nix-lib.lib.mkSystemdService = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -54,7 +54,7 @@
     };
   };
 
-  nlib.lib.mkEnvironmentFile = {
+  nix-lib.lib.mkEnvironmentFile = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
@@ -76,7 +76,7 @@
     };
   };
 
-  nlib.lib.mkEtcLink = {
+  nix-lib.lib.mkEtcLink = {
     type = lib.types.functionTo lib.types.attrs;
     fn =
       {
