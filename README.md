@@ -260,6 +260,103 @@ tests."test name" = {
 };
 ```
 
+## Wrapper Module Systems
+
+nix-lib supports wrapper-based module systems that create wrapped executables:
+
+- **[nix-wrapper-modules](https://github.com/BirdeeHub/nix-wrapper-modules)** - Module system for wrapped packages with DAG-based flag ordering
+- **[Lassulus/wrappers](https://github.com/Lassulus/wrappers)** - Library for creating wrapped executables via module evaluation
+
+Both use `lib.evalModules` internally, making them compatible with nix-lib's adapter system.
+
+### Basic Usage
+
+```nix
+{
+  inputs = {
+    nix-lib.url = "github:Dauliac/nix-lib";
+    nix-wrapper-modules.url = "github:BirdeeHub/nix-wrapper-modules";
+    # Or: wrappers.url = "github:Lassulus/wrappers";
+  };
+
+  outputs = { nixpkgs, nix-lib, nix-wrapper-modules, ... }:
+    nix-lib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [ nix-lib.flakeModules.default ];
+
+      # Define wrapper configurations
+      flake.wrapperConfigurations.myApp = nixpkgs.lib.evalModules {
+        modules = [
+          # nix-lib adapter for wrappers
+          nix-lib.wrapperModules.default
+
+          # Your wrapper libs
+          {
+            nix-lib.enable = true;
+            nix-lib.lib.mkFlags = {
+              type = lib.types.functionTo lib.types.attrs;
+              fn = name: flags: { drv.flags.${name} = flags; };
+              description = "Generate wrapper flags";
+            };
+          }
+        ];
+      };
+    };
+}
+```
+
+### With nix-wrapper-modules
+
+```nix
+# Use BirdeeHub's wrapper definitions
+flake.wrapperConfigurations.alacritty =
+  inputs.nix-wrapper-modules.wrappers.alacritty.wrap {
+    inherit pkgs;
+    modules = [
+      nix-lib.wrapperModules.default
+      {
+        nix-lib.enable = true;
+        nix-lib.lib.terminalHelper = {
+          type = lib.types.functionTo lib.types.attrs;
+          fn = shell: { settings.terminal.shell.program = shell; };
+          description = "Set terminal shell";
+        };
+      }
+    ];
+    # Use the helper
+    settings = config.lib.terminalHelper "${pkgs.zsh}/bin/zsh";
+  };
+```
+
+### With Lassulus/wrappers
+
+```nix
+# Use Lassulus's wrapper modules
+flake.wrapperConfigurations.mpv =
+  inputs.wrappers.wrapperModules.mpv.apply {
+    inherit pkgs;
+    modules = [
+      nix-lib.wrapperModules.default
+      {
+        nix-lib.enable = true;
+        nix-lib.lib.addScript = {
+          type = lib.types.functionTo lib.types.attrs;
+          fn = script: { scripts = [ script ]; };
+          description = "Add mpv script";
+        };
+      }
+    ];
+  };
+```
+
+### Accessing Wrapper Libs
+
+Libs defined in wrapper configurations are collected at:
+
+| Location | Path |
+|----------|------|
+| Within wrapper module | `config.lib.<name>` |
+| Flake output | `flake.lib.wrappers.<name>` |
+
 ## Custom Module Systems
 
 `mkAdapter` is generic and works with any NixOS-style module system:
