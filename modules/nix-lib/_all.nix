@@ -7,8 +7,8 @@
   imports = [
     ./enable.nix
     ./namespace.nix
-    ./testing.nix
+    ./testing
     ./coverage.nix
-    ./libs.nix
+    ./lib/_internal.nix
   ];
 }

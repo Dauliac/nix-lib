@@ -1,4 +1,4 @@
-# nix-lib system-aware lib exports
+# legacyPackages.lib (perSystem)
 #
 # Exports collected libs to legacyPackages.<sys>.lib.<ns>.<name>
 # Also creates nested aliases (e.g., lib.home = lib.nixos.home)
@@ -50,7 +50,7 @@ in
       systemLibs = buildSystemLibs system;
     in
     {
-      # Merge with existing legacyPackages.lib (from perSystem.nix)
+      # Merge with existing legacyPackages.lib (from lib/perSystem.nix)
       config.legacyPackages.lib = systemLibs;
     };
 }

@@ -1,17 +1,17 @@
-# nix-lib perSystem flake.parts module
+# nix-lib.lib (perSystem)
 #
-# Defines nix-lib.lib for per-system libs inside the perSystem block:
+# Per-system lib definitions (can depend on pkgs).
 #
+# Usage:
 #   perSystem = { pkgs, lib, config, ... }: {
 #     nix-lib.lib.writeGreeting = {
 #       type = lib.types.functionTo lib.types.package;
 #       fn = name: pkgs.writeText "greeting" "Hello, ${name}!";
 #       description = "Write a greeting file";
-#       tests."greets Alice" = { args.name = "Alice"; expected = "greeting-Alice"; };
 #     };
 #   };
 #
-# The plain functions are auto-populated to lib.<name>
+# Output: config.lib.<name>, legacyPackages.nix-lib.<name>
 #
 { lib, ... }:
 let
