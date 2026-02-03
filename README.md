@@ -423,7 +423,28 @@ nix-lib.collectorDefs.nixos.namespace = "os";  # flake.lib.os.* instead of flake
 
 ## Testing
 
-nix-lib uses [nix-unit](https://github.com/nix-community/nix-unit) for testing. Tests defined in `nix-lib.lib.*.tests` are automatically converted to nix-unit format.
+nix-lib supports multiple testing frameworks through a pluggable backend system. Tests defined in `nix-lib.lib.*.tests` are automatically converted to the selected backend format.
+
+### Supported Testing Frameworks
+
+| Backend | Framework | Description |
+|---------|-----------|-------------|
+| `nix-unit` | [nix-unit](https://github.com/nix-community/nix-unit) | **Default.** Catches eval errors, uses Nix C++ API, in nixpkgs |
+| `nixtest` | [nixtest](https://github.com/jetify-com/nixtest) | Pure Nix, no nixpkgs dependency, lightweight |
+| `nix-tests` | [nix-tests](https://github.com/danielefongo/nix-tests) | Rust CLI, parallel execution, helpers API |
+| `runTests` | `lib.debug.runTests` | Built-in nixpkgs testing function |
+| `nixt` | nixt | TypeScript-based, describe/it blocks |
+| `namaka` | [namaka](https://github.com/nix-community/namaka) | Snapshot testing with review workflow |
+
+### Configuring the Backend
+
+```nix
+nix-lib.testing = {
+  backend = "nix-unit";  # or "nixtest", "nix-tests", "runTests", "nixt", "namaka"
+  reporter = "junit";
+  outputPath = "test-results.xml";
+};
+```
 
 ### Running Tests
 

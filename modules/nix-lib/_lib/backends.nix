@@ -151,6 +151,48 @@ let
         expanded = concatLists (mapAttrsToList (desc: t: expandTest name desc fn t) tests);
       in
       foldl' (acc: test: acc // { ${test.testName} = test.testSpec; }) { } expanded;
+
+    # nix-tests (danielefongo): { groupName = helpers: { ctx, checks... } }
+    # https://github.com/danielefongo/nix-tests
+    # Format: runTests { "group" = helpers: rec { ctx = {...}; "check" = helpers.isEq ... }; }
+    nix-tests =
+      name: fn: tests:
+      let
+        expanded = concatLists (mapAttrsToList (desc: t: expandTest name desc fn t) tests);
+      in
+      {
+        ${name} =
+          helpers:
+          foldl' (
+            acc: test:
+            acc
+            // {
+              ${test.testName} = helpers.isEq test.testSpec.expr test.testSpec.expected;
+            }
+          ) { } expanded;
+      };
+
+    # namaka (snapshot testing): { testName = expr }
+    # https://github.com/nix-community/namaka
+    # Note: namaka uses file-based snapshots, this generates the expr values
+    # Snapshots are stored separately and reviewed via `namaka review`
+    namaka =
+      name: fn: tests:
+      let
+        expanded = concatLists (mapAttrsToList (desc: t: expandTest name desc fn t) tests);
+      in
+      foldl' (
+        acc: test:
+        acc
+        // {
+          ${test.testName} = {
+            inherit (test.testSpec) expr;
+            # For namaka, expected is stored in snapshot files
+            # Include it here for initial snapshot generation
+            _expected = test.testSpec.expected;
+          };
+        }
+      ) { } expanded;
   };
 in
 {
