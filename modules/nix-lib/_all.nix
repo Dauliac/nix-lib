@@ -9,6 +9,6 @@
     ./namespace.nix
     ./testing
     ./coverage.nix
-    ./lib/_internal.nix
+    ./lib/internal.nix
   ];
 }
