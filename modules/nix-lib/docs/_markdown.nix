@@ -129,7 +129,10 @@ let
         if rendered != null then
           ''
 
-            **Arguments:** `${rendered}`
+            **Arguments:**
+            ```nix
+            ${rendered}
+            ```
           ''
         else
           "";

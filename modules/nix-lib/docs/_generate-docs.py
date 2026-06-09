@@ -158,11 +158,7 @@ def args_to_string(meta, fn_body):
             end_idx = _find_matching_colon(stripped)
             if end_idx is not None:
                 formals = stripped[:end_idx].strip()
-                # Collapse multiline formals to single line
-                formals = re.sub(r"\s+", " ", formals)
-                # Remove trailing comma before }
-                formals = re.sub(r",\s*}", " }", formals)
-                return formals
+                return dedent_body(formals)
         else:
             # Curried: extract arg name before ':'
             colon_idx = stripped.find(":")
@@ -252,7 +248,7 @@ def lib_to_markdown(heading_level, name, meta, body):
     # Arguments
     args_str = args_to_string(meta, body)
     if args_str:
-        sections.append(f"**Arguments:** `{args_str}`\n")
+        sections.append(f"**Arguments:**\n```nix\n{args_str}\n```\n")
 
     # Type
     type_val = meta.get("type")
