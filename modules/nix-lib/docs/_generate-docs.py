@@ -26,14 +26,14 @@ def load_nix_language(so_path):
 
 
 def find_all_fn_bindings(node, source_bytes):
-    """Find ALL `fn = ...` bindings anywhere in the file."""
+    """Find ALL `fn = ...` and named bindings anywhere in the file."""
     results = []
     _find_all_fn(node, source_bytes, [], results)
     return results
 
 
 def _find_all_fn(node, source_bytes, context, results):
-    """Recursively find all fn bindings, tracking context path."""
+    """Recursively find fn bindings and named bindings, tracking context path."""
     if node.type == "binding":
         named = [c for c in node.children if c.is_named]
         if len(named) >= 2:
@@ -44,12 +44,20 @@ def _find_all_fn(node, source_bytes, context, results):
             ].decode()
 
             if attr_text == "fn":
+                # nix-lib style: fn = <body>;
                 body = source_bytes[
                     value_node.start_byte : value_node.end_byte
                 ].decode()
                 results.append((".".join(context), body))
             else:
                 new_context = context + attr_text.split(".")
+                # Also record this binding's value as a body
+                # (for plain attrset libs like nix/lib/oci.nix)
+                body = source_bytes[
+                    value_node.start_byte : value_node.end_byte
+                ].decode()
+                results.append((".".join(new_context), body))
+                # Recurse into nested attrsets
                 for child in value_node.children:
                     _find_all_fn(child, source_bytes, new_context, results)
                 return
