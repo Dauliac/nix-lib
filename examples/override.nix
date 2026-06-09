@@ -33,7 +33,7 @@
       square a + square b;
     description = "Sum of squares of two numbers";
     tests."sum of 3 and 4 squared" = {
-      args.x = {
+      args = {
         a = 3;
         b = 4;
       };

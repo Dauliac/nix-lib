@@ -35,7 +35,7 @@
       };
     description = "Create a vim keymap";
     tests."creates normal mode keymap" = {
-      args.a = {
+      args = {
         mode = "n";
         key = "<leader>f";
         action = ":Telescope find_files<CR>";
@@ -75,7 +75,7 @@
       };
     description = "Set a vim option";
     tests."sets tabstop" = {
-      args.a = {
+      args = {
         name = "tabstop";
         value = 4;
       };

@@ -19,23 +19,31 @@ let
     else
       builtins.toString type;
 
-  # Pretty-print a Nix value for documentation
+  # Pretty-print a Nix value for documentation (with depth limit)
   valueToNix =
-    v:
-    if builtins.isString v then
-      ''"${v}"''
-    else if builtins.isInt v then
-      toString v
-    else if builtins.isBool v then
-      if v then "true" else "false"
-    else if builtins.isNull v then
-      "null"
-    else if builtins.isList v then
-      "[ ${lib.concatMapStringsSep " " valueToNix v} ]"
-    else if builtins.isAttrs v then
-      "{ ${lib.concatStringsSep " " (lib.mapAttrsToList (k: val: "${k} = ${valueToNix val};") v)} }"
-    else
-      toString v;
+    let
+      go =
+        depth: v:
+        if depth <= 0 then
+          "..."
+        else if builtins.isString v then
+          ''"${v}"''
+        else if builtins.isInt v then
+          toString v
+        else if builtins.isBool v then
+          if v then "true" else "false"
+        else if builtins.isNull v then
+          "null"
+        else if builtins.isFunction v then
+          "<function>"
+        else if builtins.isList v then
+          "[ ${lib.concatMapStringsSep " " (go (depth - 1)) v} ]"
+        else if builtins.isAttrs v then
+          "{ ${lib.concatStringsSep " " (lib.mapAttrsToList (k: val: "${k} = ${go (depth - 1) val};") v)} }"
+        else
+          toString v;
+    in
+    go 5;
 
   # Extract function arguments for documentation
   # Returns a string like "{ a, b, c ? default }" or null if not detectable

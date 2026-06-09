@@ -37,7 +37,7 @@
       };
     description = "Create a systemd service definition";
     tests."creates hello service" = {
-      args.x = {
+      args = {
         name = "hello";
         description = "Hello World";
         execStart = "/bin/echo hello";
@@ -66,7 +66,7 @@
       };
     description = "Create an environment file";
     tests."creates env file" = {
-      args.x = {
+      args = {
         path = "myapp/config";
         content = "KEY=value";
       };
@@ -88,7 +88,7 @@
       };
     description = "Create a symlink in /etc";
     tests."links config" = {
-      args.x = {
+      args = {
         name = "myapp.conf";
         source = "/nix/store/abc-config";
       };

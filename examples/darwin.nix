@@ -59,7 +59,7 @@
       };
     description = "Set a macOS default";
     tests."sets dock autohide" = {
-      args.a = {
+      args = {
         domain = "dock";
         key = "autohide";
         value = true;

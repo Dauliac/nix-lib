@@ -28,7 +28,7 @@
       };
     description = "Create a shell alias for bash and zsh";
     tests."creates ls alias" = {
-      args.a = {
+      args = {
         name = "ll";
         command = "ls -la";
       };
@@ -52,7 +52,7 @@
       };
     description = "Configure git with name and email";
     tests."configures git" = {
-      args.a = {
+      args = {
         name = "John";
         email = "john@example.com";
       };
@@ -101,7 +101,7 @@
       };
     description = "Create a nixvim keymap";
     tests."creates normal mode keymap" = {
-      args.a = {
+      args = {
         mode = "n";
         key = "<leader>f";
         action = ":Telescope find_files<CR>";

@@ -30,7 +30,7 @@
       };
     description = "Create a user-level systemd service";
     tests."creates user backup service" = {
-      args.x = {
+      args = {
         name = "backup";
         description = "User backup service";
         execStart = "/usr/bin/rsync -a ~/Documents /backup";
@@ -71,7 +71,7 @@
       };
     description = "Create a user-level systemd timer";
     tests."creates daily timer" = {
-      args.x = {
+      args = {
         name = "daily-backup";
         description = "Daily backup timer";
         onCalendar = "daily";
@@ -104,7 +104,7 @@
       };
     description = "Create an XDG config file";
     tests."creates app config" = {
-      args.x = {
+      args = {
         app = "myapp";
         filename = "config.toml";
         content = "[settings]\nkey = \"value\"";

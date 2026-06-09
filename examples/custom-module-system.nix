@@ -79,7 +79,7 @@
       };
     description = "Create a component definition for my-custom-system";
     tests."creates component" = {
-      args.a = {
+      args = {
         name = "mylib";
         version = "2.0.0";
         dependencies = [
@@ -115,7 +115,7 @@
       };
     description = "Create a plugin configuration";
     tests."creates plugin" = {
-      args.a = {
+      args = {
         name = "formatter";
         src = "/nix/store/abc-formatter";
         config = {

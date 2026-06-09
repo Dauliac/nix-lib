@@ -33,7 +33,7 @@
     fn = { name, script }: pkgs.writeShellScriptBin name script;
     description = "Create a shell script package";
     tests."creates hello script" = {
-      args.a = {
+      args = {
         name = "hello";
         script = "echo hello";
       };
@@ -55,7 +55,7 @@
       '';
     description = "Wrap a package binary with environment variables";
     tests."wraps with PATH" = {
-      args.a = {
+      args = {
         pkg = pkgs.hello;
         env = {
           MY_VAR = "test";

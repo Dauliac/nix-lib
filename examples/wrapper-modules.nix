@@ -81,7 +81,7 @@
       };
     description = "Generate wrapper flags configuration for a binary";
     tests."creates flags for mytool" = {
-      args.a = {
+      args = {
         name = "mytool";
         flags = [
           "--config"
@@ -109,7 +109,7 @@
       };
     description = "Generate wrapper environment variables for a binary";
     tests."creates env for myapp" = {
-      args.a = {
+      args = {
         name = "myapp";
         env = {
           HOME = "/tmp/myapp";
@@ -167,7 +167,7 @@
       };
     description = "Generate complete wrapper configuration for a binary";
     tests."creates complete wrapper config" = {
-      args.a = {
+      args = {
         name = "nvim";
         flags = [ "--clean" ];
         env = {

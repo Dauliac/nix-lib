@@ -40,7 +40,7 @@
       # => 5
     '';
     tests."adds positives" = {
-      args.x = {
+      args = {
         a = 2;
         b = 3;
       };
@@ -59,7 +59,7 @@
       f (g x);
     description = "Compose two functions (f . g)";
     tests."composes double and add1" = {
-      args.x = {
+      args = {
         f = x: x * 2;
         g = x: x + 1;
         x = 5;
