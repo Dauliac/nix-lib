@@ -89,9 +89,12 @@ def extract_all_bodies(grammar_path, metadata, source_dir):
             fn_map[context_path] = body
 
         for lib_name in lib_names:
+            # Last segment of dotted name (e.g., "oci.mkAutoLabels" -> "mkAutoLabels")
+            short_name = lib_name.rsplit(".", 1)[-1]
             candidates = [
                 f"nix-lib.lib.{lib_name}",
                 lib_name,
+                short_name,
             ]
             for candidate in candidates:
                 if candidate in fn_map:
@@ -99,7 +102,7 @@ def extract_all_bodies(grammar_path, metadata, source_dir):
                     break
             else:
                 for ctx, body in all_fns:
-                    if ctx.endswith(lib_name) or ctx.endswith(f".{lib_name}"):
+                    if ctx.endswith(short_name) or ctx.endswith(f".{short_name}"):
                         bodies[lib_name] = body
                         break
 
