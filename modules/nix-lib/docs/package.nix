@@ -51,6 +51,7 @@ in
         __docsOptions = {
           showIndex = cfg.showIndex;
           showTitle = cfg.showTitle;
+          headingLevel = cfg.headingLevel;
         };
       };
 
@@ -70,10 +71,30 @@ in
                 assertions = map (a: builtins.removeAttrs a [ "check" ]) (t.assertions or [ ]);
               }
             ) tests;
+          # Compute function signature from fn before stripping it
+          computeFnSignature =
+            m:
+            let
+              fn = m.fn or null;
+              fnArgs =
+                if fn != null && builtins.isFunction fn then builtins.functionArgs fn else { };
+              hasSetPattern = fnArgs != { };
+              argNames = builtins.attrNames fnArgs;
+              argEntries = map (
+                name:
+                if fnArgs.${name} then "${name} ? ..." else name
+              ) argNames;
+            in
+            if hasSetPattern then
+              "{ ${lib.concatStringsSep ", " argEntries} }"
+            else
+              null;
+
           serializable = lib.mapAttrs (
             _: m:
             builtins.removeAttrs m [ "fn" ]
             // {
+              fnSignature = computeFnSignature m;
               type =
                 let
                   t = m.type or null;
@@ -95,6 +116,7 @@ in
           __options = {
             showTitle = opts.showTitle or true;
             showIndex = opts.showIndex or true;
+            headingLevel = opts.headingLevel or 3;
           };
         };
 
@@ -103,6 +125,8 @@ in
       pythonWithTreeSitter = pkgs.python3.withPackages (ps: [ ps.tree-sitter ]);
       treeSitterNix = pkgs.tree-sitter-grammars.tree-sitter-nix;
       generateScript = ./_generate-docs.py;
+
+      headerFile = pkgs.writeText "nix-lib-header.md" cfg.header;
 
       # Derivation with tree-sitter fn body extraction
       docsWithBodies = pkgs.runCommand "nix-lib-docs" {
@@ -115,13 +139,14 @@ in
           ${treeSitterNix}/parser \
           "$metadataPath" \
           ${cfg.src} \
-          $out/docs.md
+          $TMPDIR/generated.md
+        cat ${headerFile} $TMPDIR/generated.md > $out/docs.md
       '';
 
       # Fallback: pure Nix markdown generation (no fn body extraction)
       docsWithoutBodies = pkgs.writeTextFile {
         name = "nix-lib-docs";
-        text = markdown.generateMarkdown allLibsMeta;
+        text = cfg.header + markdown.generateMarkdown allLibsMeta;
         destination = "/docs.md";
       };
     in
@@ -162,6 +187,40 @@ in
           type = lib.types.bool;
           default = true;
           description = "Whether to include the top-level title and lib count in generated docs.";
+        };
+
+        headingLevel = lib.mkOption {
+          type = lib.types.int;
+          default = 3;
+          description = ''
+            Starting heading level for namespace and function headings.
+            Default 3 (###). Set to 2 when the generated content is injected
+            into a page with an H1 title, so namespaces become H2 siblings.
+          '';
+        };
+
+        header = lib.mkOption {
+          type = lib.types.lines;
+          default = "";
+          description = ''
+            Markdown content prepended before generated function documentation.
+
+            Use this for introductory text, override instructions, or any
+            content that should appear before the function reference.
+            Heading levels in the header should be consistent with `headingLevel`
+            (e.g., use ## headings when headingLevel is 2).
+
+            Example:
+            ```nix
+            nix-lib.docs.header = '''
+              Overview of available library functions.
+
+              ## Overriding functions
+
+              You can override any function via...
+            ''';
+            ```
+          '';
         };
       };
     };

@@ -124,15 +124,16 @@ let
     headingLevel: name: meta:
     let
       anchor = nameToAnchor name;
-      # Use the last segment as the display name (short name)
-      parts = lib.splitString "." name;
-      shortName = lib.last parts;
       heading = lib.concatStrings (lib.replicate headingLevel "#");
       visibleStr = if meta.visible or true then "" else " *(private)*";
       descStr = meta.description or "No description";
       argsStr =
         let
-          rendered = fnArgsToString meta;
+          rendered =
+            if meta.fnSignature or null != null then
+              meta.fnSignature
+            else
+              fnArgsToString meta;
         in
         if rendered != null then
           ''
@@ -177,7 +178,7 @@ let
       testStr = testsToMarkdown (meta.tests or { });
     in
     ''
-      ${heading} `${shortName}` {#${anchor}}${visibleStr}
+      ${heading} `${name}` {#${anchor}}${visibleStr}
       ${argsStr}${typeStr}
       ${descStr}
       ${fileStr}${exampleStr}${testStr}
@@ -257,17 +258,42 @@ let
       opts = allLibsMeta.__docsOptions or { };
       showIndex = opts.showIndex or true;
       showTitle = opts.showTitle or true;
+      headingLevel = opts.headingLevel or 3;
       cleanMeta = builtins.removeAttrs allLibsMeta [ "__docsOptions" ];
       allSortedLibNames = builtins.sort (a: b: a < b) (builtins.attrNames cleanMeta);
-      indexEntries = lib.concatMapStringsSep "\n" (
-        name: libToIndexEntry name cleanMeta.${name}
-      ) allSortedLibNames;
+      indexEntries =
+        let
+          renderIndexTree =
+            tree: depth:
+            let
+              indent = lib.concatStrings (lib.replicate depth "  ");
+              libsHere = tree.__libs or [ ];
+              libEntries = lib.concatMapStringsSep "\n" (
+                entry:
+                let
+                  anchor = nameToAnchor entry.name;
+                  fileLink =
+                    if entry.meta.file or null != null then " ([source](${entry.meta.file}))" else "";
+                in
+                "${indent}- [`${entry.name}`](#${anchor})${fileLink}"
+              ) libsHere;
+              subKeys = builtins.sort (a: b: a < b) (
+                builtins.filter (k: k != "__libs") (builtins.attrNames tree)
+              );
+              subEntries = lib.concatMapStringsSep "\n" (
+                key: "${indent}- **${key}**\n${renderIndexTree tree.${key} (depth + 1)}"
+              ) subKeys;
+            in
+            lib.concatStringsSep "\n" (lib.filter (s: s != "") [ libEntries subEntries ]);
+          nsTree = buildNamespaceTree cleanMeta allSortedLibNames;
+        in
+        renderIndexTree nsTree 0;
       libCount = builtins.length allSortedLibNames;
 
       # Build namespace tree and render with hierarchical headings
       # Root libs start at heading level 3 (###), namespace headings at same level
       nsTree = buildNamespaceTree cleanMeta allSortedLibNames;
-      libDocs = renderNamespaceTree nsTree 3;
+      libDocs = renderNamespaceTree nsTree headingLevel;
 
       titleBlock =
         if showTitle then

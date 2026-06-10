@@ -147,9 +147,16 @@ def value_to_nix(v):
 def args_to_string(meta, fn_body):
     """Extract function arguments display string.
 
-    Uses the fn body source to detect set-pattern vs curried args.
-    Falls back to test args for curried functions.
+    Priority:
+    1. fnSignature (computed at Nix eval time from builtins.functionArgs)
+    2. fn body source (tree-sitter extraction)
+    3. test args (fallback)
     """
+    # Use pre-computed signature from Nix eval if available
+    fn_sig = meta.get("fnSignature")
+    if fn_sig:
+        return fn_sig
+
     if fn_body:
         # Check if body starts with a set pattern { ... }:
         stripped = fn_body.lstrip()
@@ -234,8 +241,6 @@ def tests_to_markdown(tests):
 
 def lib_to_markdown(heading_level, name, meta, body):
     """Generate markdown for a single lib function."""
-    parts = name.split(".")
-    short_name = parts[-1]
     anchor = name_to_anchor(name)
     heading = "#" * heading_level
 
@@ -243,7 +248,7 @@ def lib_to_markdown(heading_level, name, meta, body):
     desc = meta.get("description", "No description")
 
     sections = []
-    sections.append(f"{heading} `{short_name}` {{#{anchor}}}{visible_str}\n")
+    sections.append(f"{heading} `{name}` {{#{anchor}}}{visible_str}\n")
 
     # Arguments
     args_str = args_to_string(meta, body)
@@ -324,7 +329,30 @@ def render_namespace_tree(tree, metadata, bodies, lib_level):
     return "".join(output)
 
 
-def generate_markdown(metadata, bodies, show_title=True, show_index=True):
+def _render_index_tree(tree, metadata, depth):
+    """Render a hierarchical index from the namespace tree."""
+    indent = "  " * depth
+    parts = []
+
+    # Render libs at this level
+    for lib_name in tree.get("__libs", []):
+        anchor = name_to_anchor(lib_name)
+        meta = metadata[lib_name]
+        file_link = (
+            f" ([source]({meta['file']}))" if meta.get("file") else ""
+        )
+        parts.append(f"{indent}- [`{lib_name}`](#{anchor}){file_link}\n")
+
+    # Render sub-namespaces
+    sub_keys = sorted(k for k in tree.keys() if k != "__libs")
+    for key in sub_keys:
+        parts.append(f"{indent}- **{key}**\n")
+        parts.append(_render_index_tree(tree[key], metadata, depth + 1))
+
+    return "".join(parts)
+
+
+def generate_markdown(metadata, bodies, show_title=True, show_index=True, heading_level=3):
     """Generate the full markdown document."""
     all_names = sorted(metadata.keys())
 
@@ -337,18 +365,13 @@ def generate_markdown(metadata, bodies, show_title=True, show_index=True):
 
     if show_index:
         parts.append("## Index\n\n")
-        for name in all_names:
-            anchor = name_to_anchor(name)
-            meta = metadata[name]
-            file_link = (
-                f" ([source]({meta['file']}))" if meta.get("file") else ""
-            )
-            parts.append(f"- [`{name}`](#{anchor}){file_link}\n")
+        ns_tree = build_namespace_tree(metadata)
+        parts.append(_render_index_tree(ns_tree, metadata, 0))
         parts.append("\n")
 
     # Build namespace tree and render
     ns_tree = build_namespace_tree(metadata)
-    parts.append(render_namespace_tree(ns_tree, metadata, bodies, 3))
+    parts.append(render_namespace_tree(ns_tree, metadata, bodies, heading_level))
 
     return "".join(parts)
 
@@ -375,12 +398,13 @@ def main():
 
     show_title = options.get("showTitle", True)
     show_index = options.get("showIndex", True)
+    heading_level = options.get("headingLevel", 3)
 
     # Extract fn bodies from source files
     bodies = extract_all_bodies(grammar_path, metadata, source_dir)
 
     # Generate markdown
-    md = generate_markdown(metadata, bodies, show_title, show_index)
+    md = generate_markdown(metadata, bodies, show_title, show_index, heading_level)
 
     with open(output_path, "w") as f:
         f.write(md)
