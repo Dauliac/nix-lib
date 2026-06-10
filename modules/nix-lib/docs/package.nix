@@ -1,7 +1,11 @@
 # nix-lib.docs.package (perSystem)
 #
-# The documentation derivation containing docs.md.
+# Documentation derivation(s) containing markdown for lib functions.
 # Uses tree-sitter-nix to extract fn bodies from source files at build time.
+#
+# Supports multi-page output via nix-lib.docs.pages — each page generates
+# a separate .md file with its own header, heading level, and metadata.
+# When pages is empty, falls back to a single docs.md using top-level options.
 #
 { lib, config, ... }:
 let
@@ -31,6 +35,42 @@ let
 
   # All flake-level metadata (flake libs + collected from nixos/home/etc)
   allFlakeMeta = flakeLibsMeta // allCollectedMeta;
+
+  # Page submodule type
+  pageType = lib.types.submodule {
+    options = {
+      header = lib.mkOption {
+        type = lib.types.lines;
+        default = "";
+        description = "Markdown content prepended before generated function docs.";
+      };
+      headingLevel = lib.mkOption {
+        type = lib.types.int;
+        default = 3;
+        description = "Starting heading level for namespaces and functions.";
+      };
+      showIndex = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Include function index.";
+      };
+      showTitle = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Include title and lib count.";
+      };
+      metadata = lib.mkOption {
+        type = lib.types.nullOr (lib.types.attrsOf lib.types.unspecified);
+        default = null;
+        description = ''
+          Custom metadata attrset for this page.
+          When null (default), uses auto-collected libs from all scopes.
+          Set this to inject metadata from a specific evaluation
+          (e.g., NixOS container eval _libsMeta).
+        '';
+      };
+    };
+  };
 in
 {
   perSystem =
@@ -46,22 +86,19 @@ in
       perSystemLibDefs = flattenLibs "" (config.nix-lib.lib or { });
       perSystemLibsMeta = libDefsToMeta perSystemLibDefs (config.lib or { });
 
-      # Merge flake metadata (from closure) with per-system metadata
-      allLibsMeta = allFlakeMeta // perSystemLibsMeta // {
-        __docsOptions = {
-          showIndex = cfg.showIndex;
-          showTitle = cfg.showTitle;
-          headingLevel = cfg.headingLevel;
-        };
-      };
+      # Default auto-collected metadata (all scopes merged)
+      autoCollectedMeta = allFlakeMeta // perSystemLibsMeta;
 
       # Serialize metadata to JSON (without fn closures, with type as string)
       metaToJson =
-        meta:
+        {
+          meta,
+          showTitle,
+          showIndex,
+          headingLevel,
+        }:
         let
-          opts = meta.__docsOptions or { };
           cleanMeta = builtins.removeAttrs meta [ "__docsOptions" ];
-          # Strip functions from test assertions for JSON serialization
           cleanTests =
             tests:
             lib.mapAttrs (
@@ -71,7 +108,6 @@ in
                 assertions = map (a: builtins.removeAttrs a [ "check" ]) (t.assertions or [ ]);
               }
             ) tests;
-          # Compute function signature from fn before stripping it
           computeFnSignature =
             m:
             let
@@ -89,7 +125,6 @@ in
               "{ ${lib.concatStringsSep ", " argEntries} }"
             else
               null;
-
           serializable = lib.mapAttrs (
             _: m:
             builtins.removeAttrs m [ "fn" ]
@@ -114,51 +149,85 @@ in
         serializable
         // {
           __options = {
-            showTitle = opts.showTitle or true;
-            showIndex = opts.showIndex or true;
-            headingLevel = opts.headingLevel or 3;
+            inherit showTitle showIndex headingLevel;
           };
         };
-
-      metadataJson = builtins.toJSON (metaToJson allLibsMeta);
 
       pythonWithTreeSitter = pkgs.python3.withPackages (ps: [ ps.tree-sitter ]);
       treeSitterNix = pkgs.tree-sitter-grammars.tree-sitter-nix;
       generateScript = ./_generate-docs.py;
 
-      headerFile = pkgs.writeText "nix-lib-header.md" cfg.header;
+      # Build a single docs page from a page config
+      buildPage =
+        name: pageCfg:
+        let
+          pageMeta = if pageCfg.metadata != null then pageCfg.metadata else autoCollectedMeta;
+          pageJson = builtins.toJSON (metaToJson {
+            meta = pageMeta;
+            inherit (pageCfg) showTitle showIndex headingLevel;
+          });
+          headerFile = pkgs.writeText "nix-lib-header-${name}.md" pageCfg.header;
+        in
+        if cfg.src != null then
+          pkgs.runCommand "nix-lib-page-${name}" {
+            nativeBuildInputs = [ pythonWithTreeSitter ];
+            passAsFile = [ "metadata" ];
+            metadata = pageJson;
+          } ''
+            python3 ${generateScript} \
+              ${treeSitterNix}/parser \
+              "$metadataPath" \
+              ${cfg.src} \
+              $TMPDIR/generated.md
+            cat ${headerFile} $TMPDIR/generated.md > $out
+          ''
+        else
+          pkgs.writeText "nix-lib-page-${name}" (
+            pageCfg.header + markdown.generateMarkdown (
+              pageMeta // {
+                __docsOptions = {
+                  inherit (pageCfg) showTitle showIndex headingLevel;
+                };
+              }
+            )
+          );
 
-      # Derivation with tree-sitter fn body extraction
-      docsWithBodies = pkgs.runCommand "nix-lib-docs" {
-        nativeBuildInputs = [ pythonWithTreeSitter ];
-        passAsFile = [ "metadata" ];
-        metadata = metadataJson;
-      } ''
-        mkdir -p $out
-        python3 ${generateScript} \
-          ${treeSitterNix}/parser \
-          "$metadataPath" \
-          ${cfg.src} \
-          $TMPDIR/generated.md
-        cat ${headerFile} $TMPDIR/generated.md > $out/docs.md
-      '';
+      # Effective pages: if pages is set, use it; otherwise build a default page
+      effectivePages =
+        if cfg.pages != { } then
+          cfg.pages
+        else
+          {
+            docs = {
+              inherit (cfg) header headingLevel showIndex showTitle;
+              metadata = null;
+            };
+          };
 
-      # Fallback: pure Nix markdown generation (no fn body extraction)
-      docsWithoutBodies = pkgs.writeTextFile {
-        name = "nix-lib-docs";
-        text = cfg.header + markdown.generateMarkdown allLibsMeta;
-        destination = "/docs.md";
-      };
+      # Build multi-page output
+      pageDerivations = lib.mapAttrs buildPage effectivePages;
+
+      docsPackage = pkgs.runCommand "nix-lib-docs" { } (
+        ''
+          mkdir -p $out
+        ''
+        + lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (
+            name: drv: "cp ${drv} $out/${name}.md"
+          ) pageDerivations
+        )
+      );
     in
     {
       options.nix-lib.docs = {
         package = lib.mkOption {
           type = lib.types.package;
-          default = if cfg.src != null then docsWithBodies else docsWithoutBodies;
+          default = docsPackage;
           description = ''
             Markdown documentation package for all defined libs.
 
-            The output contains a `docs.md` file with all lib definitions.
+            When `pages` is empty, outputs a single `docs.md`.
+            When `pages` is set, outputs one `<name>.md` per page.
             When `src` is set, function bodies are automatically extracted
             from source files using tree-sitter.
           '';
@@ -177,50 +246,59 @@ in
           '';
         };
 
+        pages = lib.mkOption {
+          type = lib.types.attrsOf pageType;
+          default = { };
+          description = ''
+            Multi-page documentation output. Each key becomes a `<key>.md` file.
+
+            When empty (default), a single `docs.md` is generated using the
+            top-level `header`, `headingLevel`, `showIndex`, `showTitle` options.
+
+            Each page can have its own header, heading level, and metadata source.
+            Set `metadata` to inject libs from a specific evaluation scope
+            (e.g., NixOS container, deploy modules).
+
+            Example:
+            ```nix
+            nix-lib.docs.pages = {
+              flake-parts = {
+                header = "Functions for flake-parts consumers...";
+                headingLevel = 2;
+              };
+              container = {
+                header = "Functions inside NixOS container eval...";
+                headingLevel = 2;
+                metadata = containerLibsMeta;
+              };
+            };
+            ```
+          '';
+        };
+
+        # Legacy top-level options (used when pages is empty)
         showIndex = lib.mkOption {
           type = lib.types.bool;
           default = true;
-          description = "Whether to include the function index in generated docs.";
+          description = "Include function index (legacy, used when `pages` is empty).";
         };
 
         showTitle = lib.mkOption {
           type = lib.types.bool;
           default = true;
-          description = "Whether to include the top-level title and lib count in generated docs.";
+          description = "Include title and lib count (legacy, used when `pages` is empty).";
         };
 
         headingLevel = lib.mkOption {
           type = lib.types.int;
           default = 3;
-          description = ''
-            Starting heading level for namespace and function headings.
-            Default 3 (###). Set to 2 when the generated content is injected
-            into a page with an H1 title, so namespaces become H2 siblings.
-          '';
+          description = "Starting heading level (legacy, used when `pages` is empty).";
         };
 
         header = lib.mkOption {
           type = lib.types.lines;
           default = "";
-          description = ''
-            Markdown content prepended before generated function documentation.
-
-            Use this for introductory text, override instructions, or any
-            content that should appear before the function reference.
-            Heading levels in the header should be consistent with `headingLevel`
-            (e.g., use ## headings when headingLevel is 2).
-
-            Example:
-            ```nix
-            nix-lib.docs.header = '''
-              Overview of available library functions.
-
-              ## Overriding functions
-
-              You can override any function via...
-            ''';
-            ```
-          '';
+          description = "Header markdown (legacy, used when `pages` is empty).";
         };
       };
     };
