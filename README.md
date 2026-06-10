@@ -809,6 +809,8 @@ This runs each scenario in `tests/scenarios/` and reports pass/fail:
 ## See Also
 
 - `examples/` - Working examples for each module system
+- `examples/docs.nix` - Documentation generator configuration and options
+- `examples/e2e-tests.nix` - E2E test runner usage and scenario structure
 - `tests/scenarios/mkFlake-standalone/` - mkFlake standalone example
 - `tests/scenarios/mkFlake-flake-parts/` - mkFlake with flake-parts example
 - `tests/bdd/` - BDD tests for structure validation
