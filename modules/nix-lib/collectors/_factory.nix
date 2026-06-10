@@ -97,7 +97,36 @@ let
       ) { } systems
     else
       { };
+  # Module collector: evaluates un-evaluated modules from flake.modules.*
+  # Requires evalConfig.extraModules to include the nix-lib adapter module.
+  mkModuleCollector =
+    {
+      configPath,
+      evalConfig ? { },
+      attr,
+      ...
+    }:
+    flakeCfg:
+    let
+      modules = lib.attrByPath configPath { } flakeCfg.flake;
+      moduleNames = builtins.attrNames modules;
+    in
+    lib.foldl' (
+      acc: name:
+      let
+        mod = modules.${name};
+        eval = lib.evalModules {
+          modules = [
+            mod
+            { config._module.check = false; }
+          ] ++ (evalConfig.extraModules or [ ]);
+          specialArgs = evalConfig.specialArgs or { };
+        };
+        meta = eval.config.nix-lib.${attr} or { };
+      in
+      acc // meta
+    ) { } moduleNames;
 in
 {
-  inherit mkSystemAwareCollector mkFlatCollector;
+  inherit mkSystemAwareCollector mkFlatCollector mkModuleCollector;
 }

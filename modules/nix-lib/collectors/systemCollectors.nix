@@ -8,7 +8,7 @@
 let
   cfg = config.nix-lib;
   factory = import ./_factory.nix { inherit lib; };
-  inherit (factory) mkSystemAwareCollector mkFlatCollector;
+  inherit (factory) mkSystemAwareCollector mkFlatCollector mkModuleCollector;
 
   # Filter enabled collectors
   enabledDefs = lib.filterAttrs (_: def: def.enable) cfg.collectorDefs;
@@ -44,11 +44,19 @@ in
 
   # Generate system-aware collector functions
   config.nix-lib.systemCollectors = lib.mapAttrs (
-    _: def: mkSystemAwareCollector (def // { attr = "_fns"; })
+    _: def:
+    if def.pathType == "modules" then
+      mkModuleCollector (def // { attr = "_fns"; })
+    else
+      mkSystemAwareCollector (def // { attr = "_fns"; })
   ) enabledDefsByNamespace;
 
   # Generate legacy flat collector functions (backwards compat)
   config.nix-lib.collectors = lib.mapAttrs (
-    _: def: mkFlatCollector (def // { attr = "_fns"; })
+    _: def:
+    if def.pathType == "modules" then
+      mkModuleCollector (def // { attr = "_fns"; })
+    else
+      mkFlatCollector (def // { attr = "_fns"; })
   ) enabledDefsByNamespace;
 }

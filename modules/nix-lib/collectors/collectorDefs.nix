@@ -23,12 +23,36 @@ let
           type = lib.types.enum [
             "flat"
             "perSystem"
+            "modules"
           ];
           default = "flat";
           description = ''
             Collection strategy:
             - flat: Traverse flake.<configPath>.<name>.config.nix-lib.<attr>
             - perSystem: Traverse flake.legacyPackages.<system>.<configPath>
+            - modules: Evaluate un-evaluated modules at flake.<configPath> with
+              lib.evalModules, injecting extraModules from evalConfig. Use this
+              for flake.modules.* exports that contain nix-lib declarations.
+          '';
+        };
+
+        evalConfig = lib.mkOption {
+          type = lib.types.attrsOf lib.types.unspecified;
+          default = { };
+          description = ''
+            Configuration for module evaluation (pathType = "modules" only).
+
+            - extraModules: list of modules to inject alongside each target module
+              (must include the nix-lib adapter module for _libsMeta extraction)
+            - specialArgs: attrset passed as specialArgs to lib.evalModules
+
+            Example:
+            ```nix
+            evalConfig = {
+              extraModules = [ inputs.nix-lib.nixosModules.default ];
+              specialArgs = { inherit pkgs; };
+            };
+            ```
           '';
         };
 

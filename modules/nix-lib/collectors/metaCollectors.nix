@@ -6,7 +6,7 @@
 let
   cfg = config.nix-lib;
   factory = import ./_factory.nix { inherit lib; };
-  inherit (factory) mkFlatCollector;
+  inherit (factory) mkFlatCollector mkModuleCollector;
 
   # Filter enabled collectors
   enabledDefs = lib.filterAttrs (_: def: def.enable) cfg.collectorDefs;
@@ -34,6 +34,10 @@ in
   };
 
   config.nix-lib.metaCollectors = lib.mapAttrs (
-    _: def: mkFlatCollector (def // { attr = "_libsMeta"; })
+    _: def:
+    if def.pathType == "modules" then
+      mkModuleCollector (def // { attr = "_libsMeta"; })
+    else
+      mkFlatCollector (def // { attr = "_libsMeta"; })
   ) enabledDefsByNamespace;
 }
