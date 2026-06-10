@@ -602,16 +602,17 @@ nix-lib.testing = {
 
 ### Running Tests
 
+Run unit tests for a single scenario:
+
 ```bash
-cd tests
+cd tests/scenarios/nix-unit
 nix run .#test
 ```
 
-Output:
-```
-=== Running nix-unit tests ===
-🎉 97/97 successful
-=== All tests passed! ===
+Run all E2E test scenarios:
+
+```bash
+nix run .#test-e2e
 ```
 
 ### Test Architecture
@@ -664,8 +665,9 @@ Tests are organized in three layers:
 | **Unit tests** | `nix-lib.lib.*.tests` | Function behavior (defined with libs) |
 | **BDD tests** | `tests/bdd/*.nix` | Structure validation (namespaces, adapters) |
 | **perSystem tests** | `perSystem.nix-unit.tests` | System-specific lib checks |
+| **E2E scenarios** | `tests/scenarios/*/` | End-to-end integration per backend |
 
-All tests are merged into `flake.tests` and run together via `nix-unit --flake .#tests`.
+All tests are merged into `flake.tests` and run together via `nix-unit --flake .#tests`. E2E scenarios are run via `nix run .#test-e2e`.
 
 ### Writing Tests
 
@@ -710,6 +712,99 @@ For BDD-style structure tests, create modules in `tests/bdd/`:
 ```
 
 **Note:** nix-unit requires test names to start with `test`.
+
+## Documentation Generator
+
+nix-lib includes a built-in documentation generator that produces a markdown API reference from your lib metadata. It renders types, function arguments, descriptions, implementation bodies, and test cases.
+
+### Generating Docs
+
+```bash
+nix build .#nix-lib-docs
+cat result/docs.md
+```
+
+### Configuration
+
+Configure via `nix-lib.docs.*` in your perSystem:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `src` | `path \| null` | `null` | Source root for fn body extraction (set to `self` to enable) |
+| `showIndex` | `bool` | `true` | Include a function index at the top |
+| `showTitle` | `bool` | `true` | Include the title and lib count header |
+| `enableOutput` | `bool` | `true` | Export docs as `packages.nix-lib-docs` |
+
+### Example
+
+```nix
+perSystem = { config, ... }: {
+  nix-lib.docs = {
+    src = self;         # Enable tree-sitter fn body extraction
+    showIndex = true;
+    showTitle = true;
+  };
+};
+```
+
+### What Gets Rendered
+
+For each lib function, the generated `docs.md` includes:
+
+- **Function arguments** — set-pattern (`{ a, b, c ? default }`) or curried (`x → y → z`), rendered in fenced code blocks
+- **Type** — human-readable type signature
+- **Description** — from the lib definition
+- **Source file** — link to the source
+- **Implementation body** — collapsible section with the function body (requires `src` to be set, uses tree-sitter-nix)
+- **Test cases** — collapsible table with input/expected columns
+- **Namespace headings** — libs are grouped hierarchically by source (see below)
+
+### Doc Namespacing
+
+Libs in the generated docs are automatically namespaced by where they are defined. The doc generator prefixes each lib name with its source module system, then organizes them into a hierarchical heading structure.
+
+| Defined in | Doc namespace prefix | Example in docs |
+|------------|---------------------|-----------------|
+| Flake-level `nix-lib.lib.*` | `flake.` | `flake.math.double` |
+| NixOS `nix-lib.lib.*` | `nixos.` | `nixos.mkService` |
+| home-manager `nix-lib.lib.*` | `home.` | `home.mkShell` |
+| nix-darwin `nix-lib.lib.*` | `darwin.` | `darwin.mkApp` |
+| nixvim `nix-lib.lib.*` | `vim.` | `vim.mkPlugin` |
+| system-manager `nix-lib.lib.*` | `system.` | `system.mkUnit` |
+| nix-wrapper-modules `nix-lib.lib.*` | `wrappers.` | `wrappers.mkFlags` |
+| perSystem `nix-lib.lib.*` | *(none)* | `myHelper` |
+
+Nested namespaces create hierarchical headings in the output. For example, libs defined as `nix-lib.lib.math.double` and `nix-lib.lib.math.add` at the flake level produce:
+
+```markdown
+### flake
+#### math
+##### `double`
+##### `add`
+```
+
+### Body Extraction
+
+When `nix-lib.docs.src` is set, the generator uses tree-sitter-nix to parse your source files and extract function implementation bodies. Without it, docs are generated in pure Nix (faster, but no implementation bodies).
+
+## E2E Test Runner
+
+nix-lib provides an E2E test runner that executes all test scenarios:
+
+```bash
+nix run .#test-e2e
+```
+
+This runs each scenario in `tests/scenarios/` and reports pass/fail:
+
+| Scenario | Description |
+|----------|-------------|
+| `nix-unit` | Tests using nix-unit backend |
+| `nix-tests` | Tests using nix-tests backend with devour-flake |
+| `standalone` | Standalone test setup |
+| `mkFlake-flake-parts` | mkFlake with flake-parts integration |
+| `mkFlake-standalone` | mkFlake without flake-parts |
+| `linter-fail` | Verifies linter correctly rejects invalid code |
 
 ## See Also
 
