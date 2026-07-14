@@ -1,5 +1,11 @@
 # Supported systems configuration
-{ inputs, ... }:
+# Inlined from github:nix-systems/default to avoid an extra input for consumers.
+{ ... }:
 {
-  systems = import inputs.systems;
+  systems = [
+    "aarch64-darwin"
+    "aarch64-linux"
+    "x86_64-darwin"
+    "x86_64-linux"
+  ];
 }
