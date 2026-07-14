@@ -23,51 +23,50 @@
   nix-lib.enable = true;
 
   # NixOS-specific lib functions
+  #
+  # IMPORTANT: Lib functions should return OPTION-LEVEL values, not top-level
+  # NixOS config fragments. This allows using them inside specific option paths
+  # without infinite recursion.
+  #
+  # Good:  fn = name: { description = "..."; wantedBy = [...]; };
+  #        Used as: systemd.services.foo = config.lib.mkSystemdService "foo";
+  #
+  # Bad:   fn = name: { systemd.services.${name} = { ... }; };
+  #        Cannot be used at the top level (causes infinite recursion).
+
   nix-lib.lib.mkSystemdService = {
     type = lib.types.functionTo lib.types.attrs;
     fn = name: {
-      systemd.services.${name} = {
-        description = "Service ${name}";
-        wantedBy = [ "multi-user.target" ];
-      };
+      description = "Service ${name}";
+      wantedBy = [ "multi-user.target" ];
     };
     description = "Generate a basic systemd service configuration";
     tests."creates nginx service" = {
       args.name = "nginx";
       expected = {
-        systemd.services.nginx = {
-          description = "Service nginx";
-          wantedBy = [ "multi-user.target" ];
-        };
+        description = "Service nginx";
+        wantedBy = [ "multi-user.target" ];
       };
     };
   };
 
   nix-lib.lib.enableService = {
-    type = lib.types.functionTo lib.types.attrs;
-    fn = name: {
-      services.${name}.enable = true;
-    };
-    description = "Enable a NixOS service";
+    type = lib.types.functionTo lib.types.bool;
+    fn = _name: true;
+    description = "Returns true (for use as services.<name>.enable value)";
     tests."enables openssh" = {
-      args.name = "openssh";
-      expected = {
-        services.openssh.enable = true;
-      };
+      args._name = "openssh";
+      expected = true;
     };
   };
 
-  nix-lib.lib.openFirewallPort = {
-    type = lib.types.functionTo lib.types.attrs;
-    fn = port: {
-      networking.firewall.allowedTCPPorts = [ port ];
-    };
-    description = "Open a TCP port in the firewall";
-    tests."opens port 80" = {
-      args.port = 80;
-      expected = {
-        networking.firewall.allowedTCPPorts = [ 80 ];
-      };
+  nix-lib.lib.openFirewallPorts = {
+    type = lib.types.functionTo (lib.types.listOf lib.types.port);
+    fn = ports: ports;
+    description = "Returns a list of TCP ports (for use as networking.firewall.allowedTCPPorts)";
+    tests."opens ports" = {
+      args.ports = [ 80 443 ];
+      expected = [ 80 443 ];
     };
   };
 
@@ -75,21 +74,22 @@
   # Usage Example (in a separate module imported after this one):
   # ============================================================
   #
+  # IMPORTANT: Do NOT use config.lib.* inside `imports` or at the
+  # top level of a module (including lib.mkMerge). The NixOS module
+  # system needs to know which options a module sets BEFORE it can
+  # build `config`, so referencing config at the top level creates
+  # infinite recursion.
+  #
+  # Instead, use config.lib.* within SPECIFIC option paths:
+  #
   # { config, ... }: {
-  #   imports = [
-  #     # NixOS libs
-  #     (config.lib.mkSystemdService "example-daemon")
-  #     (config.lib.openFirewallPort 8080)
-  #     (config.lib.enableService "openssh")
+  #   # NixOS libs — used inside specific option paths
+  #   systemd.services.example-daemon = config.lib.mkSystemdService "example-daemon";
+  #   services.openssh.enable = config.lib.enableService "openssh";
+  #   networking.firewall.allowedTCPPorts = config.lib.openFirewallPorts [ 80 443 ];
   #
-  #     # Home-manager libs (propagated from nested home-manager config)
-  #     # Available when home-manager.nixosModules is imported
-  #     # (config.lib.home.mkAlias { name = "ll"; command = "ls -la"; })
-  #     # (config.lib.home.enableProgram "starship")
-  #
-  #     # Vim libs (propagated from home-manager -> nixvim chain)
-  #     # Available when nixvim is configured in home-manager users
-  #     # (config.lib.home.vim.mkKeymap { mode = "n"; key = "<leader>f"; action = ":Telescope<CR>"; })
-  #   ];
+  #   # Home-manager libs (propagated from nested home-manager config)
+  #   # Available when home-manager.nixosModules is imported
+  #   # programs.starship.enable = config.lib.home.enableProgram "starship";
   # }
 }

@@ -221,6 +221,14 @@ let
   # Own libs from nix-lib.fns (resolved, after potential overrides)
   ownLibs = if cfg.enable then buildVisibleFnsStructure config.nix-lib.fns else { };
 
+  # Wrap top-level functions for systems with builtin lib option (e.g. NixOS
+  # defines options.lib as attrsOf attrs). __functor makes attrsets callable.
+  wrapFnsForBuiltinLib =
+    libs:
+    lib.mapAttrs (
+      _: v: if builtins.isFunction v then { __functor = _: v; } else v
+    ) libs;
+
   # Merged libs for config.lib
   mergedLibs = ownLibs // nestedLibs;
 
@@ -304,7 +312,8 @@ in
     nix-lib._nestedFns = nestedLibs;
 
     # Alias visible functions to config.lib (merged with nested)
-    lib = mergedLibs;
+    # Wrap for systems with builtin lib option whose type rejects functions
+    lib = if resolvedDef.hasBuiltinLib then wrapFnsForBuiltinLib mergedLibs else mergedLibs;
 
     nix-lib.namespace = lib.mkDefault resolvedDef.namespace;
 
