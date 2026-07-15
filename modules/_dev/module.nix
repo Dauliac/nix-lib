@@ -13,7 +13,13 @@
   imports = [
     ../nix-lib/_default.nix
     inputs.treefmt-nix.flakeModule
-    inputs.nix-unit.modules.flake.default
+    # Declare flake.tests as mergeable (multiple modules contribute tests)
+    ({ lib, ... }: {
+      options.flake.tests = lib.mkOption {
+        type = lib.types.attrsOf lib.types.anything;
+        default = { };
+      };
+    })
 
     # Full integration examples — creates nixosConfigurations,
     # homeConfigurations, etc. for BDD + unit tests to validate.
@@ -119,9 +125,6 @@
         projectRootFile = "flake.nix";
         programs.nixfmt.enable = true;
       };
-
-      # Disable nix-unit module's own check (uses --flake, needs git in sandbox)
-      checks.nix-unit = lib.mkForce (pkgs.runCommand "nix-unit-skip" { } "touch $out");
 
       # All backends tested in parallel via a single aggregation derivation.
       checks.tests = pkgs.runCommand "tests" { } ''
