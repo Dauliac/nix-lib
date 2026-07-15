@@ -7,9 +7,9 @@
       linter = pkgs.rustPlatform.buildRustPackage {
         pname = "nix-let-fn-linter";
         version = "0.1.0";
-        src = ../tools/nix-let-fn-linter;
+        src = ../../tools/nix-let-fn-linter;
         cargoLock = {
-          lockFile = ../tools/nix-let-fn-linter/Cargo.lock;
+          lockFile = ../../tools/nix-let-fn-linter/Cargo.lock;
         };
         meta = {
           description = "A linter that detects function definitions in Nix let-in blocks";

@@ -10,6 +10,10 @@ in
   # Consumers import this module via flake-parts
   flake.flakeModules.default = inputs.import-tree ./nix-lib;
 
+  # Pure module — no pkgs, no docs, no per-system support.
+  # For consumers who only need pure Nix lib wiring (issue #7).
+  flake.flakeModules.pure = import ./nix-lib/_pure.nix;
+
   # NixOS/home-manager modules for consumers
   # All adapters automatically merge libs into config.lib
   flake.nixosModules.default = nixLibLib.mkAdapter { name = "nixos"; };
