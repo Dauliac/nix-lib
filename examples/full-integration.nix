@@ -169,7 +169,7 @@ in
   # 6. Darwin configuration (for macOS) with nested home-manager
   # ============================================================
   flake.darwinConfigurations.test = nix-darwin.lib.darwinSystem {
-    system = "x86_64-darwin";
+    system = "aarch64-darwin";
     modules = [
       # nix-lib darwin adapter
       nix-lib.darwinModules.default
@@ -209,7 +209,7 @@ in
         };
 
         # Required darwin options
-        nixpkgs.hostPlatform = "x86_64-darwin";
+        nixpkgs.hostPlatform = "aarch64-darwin";
       }
     ];
   };

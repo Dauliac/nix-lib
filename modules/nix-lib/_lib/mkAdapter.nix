@@ -224,10 +224,7 @@ let
   # Wrap top-level functions for systems with builtin lib option (e.g. NixOS
   # defines options.lib as attrsOf attrs). __functor makes attrsets callable.
   wrapFnsForBuiltinLib =
-    libs:
-    lib.mapAttrs (
-      _: v: if builtins.isFunction v then { __functor = _: v; } else v
-    ) libs;
+    libs: lib.mapAttrs (_: v: if builtins.isFunction v then { __functor = _: v; } else v) libs;
 
   # Merged libs for config.lib
   mergedLibs = ownLibs // nestedLibs;

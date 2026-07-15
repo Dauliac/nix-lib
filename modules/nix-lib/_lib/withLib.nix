@@ -39,14 +39,17 @@ let
   originalLib = args.specialArgs.lib or (if baseLib != null then baseLib else lib);
 
   # Extend lib with the optionsLib under the specified namespace
-  extendedLib = originalLib.extend (final: prev: {
-    ${namespace} = optionsLib;
-  });
+  extendedLib = originalLib.extend (
+    final: prev: {
+      ${namespace} = optionsLib;
+    }
+  );
 in
-mkFlakeFn
-  (args // {
+mkFlakeFn (
+  args
+  // {
     specialArgs = (args.specialArgs or { }) // {
       lib = extendedLib;
     };
-  })
-  module
+  }
+) module

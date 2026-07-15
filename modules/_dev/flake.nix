@@ -1,5 +1,5 @@
 # Dev-only inputs — NOT fetched by consumers.
-# Provides nixpkgs, treefmt, and nix-unit for development.
+# Provides nixpkgs, dev tools, and test-required module system inputs.
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -9,6 +9,24 @@
     };
     nix-unit = {
       url = "github:nix-community/nix-unit";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # Test-required: the BDD tests + examples need these to create
+    # nixosConfigurations, homeConfigurations, etc.
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nixvim = {
+      url = "github:nix-community/nixvim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nix-darwin = {
+      url = "github:LnL7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    system-manager = {
+      url = "github:numtide/system-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

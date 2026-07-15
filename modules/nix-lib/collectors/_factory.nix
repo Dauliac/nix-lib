@@ -119,7 +119,8 @@ let
           modules = [
             mod
             { config._module.check = false; }
-          ] ++ (evalConfig.extraModules or [ ]);
+          ]
+          ++ (evalConfig.extraModules or [ ]);
           specialArgs = evalConfig.specialArgs or { };
         };
         meta = eval.config.nix-lib.${attr} or { };

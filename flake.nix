@@ -13,7 +13,6 @@
     in
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
-        ./modules/nix-lib/_pure.nix
         ./modules/nix-lib-outputs.nix
         ./modules/systems.nix
         ./modules/partitions.nix

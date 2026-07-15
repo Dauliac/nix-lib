@@ -27,7 +27,12 @@ let
 in
 {
   perSystem =
-    { lib, config, pkgs, ... }:
+    {
+      lib,
+      config,
+      pkgs,
+      ...
+    }:
     let
       # Flatten nested lib definitions
       flatLibDefs = flattenLibs "" (config.nix-lib.lib or { });

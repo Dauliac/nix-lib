@@ -1,28 +1,41 @@
-# Dev partition module — provides nixpkgs, treefmt, nix-unit, and devShell.
-# The main evaluation is pure (no pkgs); this partition adds all dev tooling.
+# Dev partition module — full dev tooling + tests as checks.
+#
+# Follows the nix-oci pattern: the dev partition imports examples,
+# BDD tests, and all test-required inputs. Tests run as eval-time
+# checks, not as apps with recursive nix.
 #
 # Usage:
-#   nix flake check      # format check (treefmt)
-#   nix fmt              # auto-format with treefmt
-#   nix develop          # shell with nix-unit (for interactive testing)
+#   nix flake check      # treefmt + 46 unit tests (all as checks)
+#   nix fmt              # auto-format
+#   nix develop          # shell with nix-unit
 #   nix build .#nix-lib-docs
-#   nix run .#test-e2e   # E2E integration tests (runs all test scenarios)
-#
-# Tests are run via test scenarios (tests/scenarios/*/), not as checks,
-# because they need recursive nix evaluation and extra inputs (home-manager,
-# nixvim, etc.) that aren't in the main flake.
-{ inputs, ... }:
+{ inputs, config, ... }:
 {
   imports = [
     ../nix-lib/_default.nix
-    ../_pkgs/e2e-tests.nix
     inputs.treefmt-nix.flakeModule
+    inputs.nix-unit.modules.flake.default
+
+    # Full integration examples — creates nixosConfigurations,
+    # homeConfigurations, etc. for BDD + unit tests to validate.
+    ../../examples/full-integration.nix
+
+    # BDD tests — pure Nix assertions about library structure
+    ../../tests/bdd/adapters.nix
+    ../../tests/bdd/libDef.nix
+    ../../tests/bdd/collectors.nix
   ];
 
   perSystem =
-    { system, ... }:
+    { system, lib, ... }:
     let
       pkgs = inputs.nixpkgs.legacyPackages.${system};
+
+      # All { expr, expected } test entries from flake.tests (BDD + auto-generated)
+      allTests = lib.filterAttrs (_: test: test ? expr && test ? expected) (config.flake.tests or { });
+      failures = lib.filterAttrs (_: test: test.expr != test.expected) allTests;
+      testCount = builtins.length (builtins.attrNames allTests);
+      failCount = builtins.length (builtins.attrNames failures);
     in
     {
       _module.args.pkgs = pkgs;
@@ -31,6 +44,20 @@
         projectRootFile = "flake.nix";
         programs.nixfmt.enable = true;
       };
+
+      # Disable nix-unit's own check (needs nix evaluator inside sandbox)
+      checks.nix-unit = lib.mkForce (pkgs.runCommand "nix-unit-skip" { } "touch $out");
+
+      # Eval-time unit tests — all { expr, expected } pairs from BDD + lib tests.
+      # Failures are caught at Nix eval time, before any derivation builds.
+      checks.unit-tests =
+        if failures != { } then
+          throw "Unit tests failed (${toString failCount}/${toString testCount}): ${builtins.concatStringsSep ", " (builtins.attrNames failures)}"
+        else
+          pkgs.runCommand "unit-tests-pass" { } ''
+            echo "${toString testCount} tests passed"
+            touch $out
+          '';
 
       devShells.default = pkgs.mkShell {
         packages = [

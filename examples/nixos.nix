@@ -65,8 +65,14 @@
     fn = ports: ports;
     description = "Returns a list of TCP ports (for use as networking.firewall.allowedTCPPorts)";
     tests."opens ports" = {
-      args.ports = [ 80 443 ];
-      expected = [ 80 443 ];
+      args.ports = [
+        80
+        443
+      ];
+      expected = [
+        80
+        443
+      ];
     };
   };
 
