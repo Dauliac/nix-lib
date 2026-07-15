@@ -121,14 +121,15 @@
       };
 
       # Disable nix-unit module's own check (uses --flake, needs git in sandbox)
-      checks.nix-unit = lib.mkForce (
-        pkgs.runCommand "tests" { } ''
-          mkdir -p $out
-          ln -s ${check-nix-unit} $out/nix-unit
-          ln -s ${check-runTests} $out/runTests
-          ln -s ${check-nix-tests} $out/nix-tests
-        ''
-      );
+      checks.nix-unit = lib.mkForce (pkgs.runCommand "nix-unit-skip" { } "touch $out");
+
+      # All backends tested in parallel via a single aggregation derivation.
+      checks.tests = pkgs.runCommand "tests" { } ''
+        mkdir -p $out
+        ln -s ${check-nix-unit} $out/nix-unit
+        ln -s ${check-runTests} $out/runTests
+        ln -s ${check-nix-tests} $out/nix-tests
+      '';
 
       devShells.default = pkgs.mkShell {
         packages = [
