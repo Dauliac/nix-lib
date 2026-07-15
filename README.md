@@ -30,6 +30,20 @@ This gives you:
 - **Composition** - use the NixOS module system to combine libraries
 - **Nested propagation** - libs from nested modules (home-manager in NixOS) are accessible in parent scope
 
+## Consumer Inputs
+
+nix-lib is designed to be lightweight. Consumers only fetch:
+
+- **flake-parts** — the module system framework
+- **nixpkgs-lib** — lib-only subset of nixpkgs (~few MB, NOT the full ~500MB checkout)
+
+Full `nixpkgs` is never fetched from nix-lib. Consumers provide their own for `pkgs`.
+
+```nix
+# Deduplicate nixpkgs-lib with your own nixpkgs:
+nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
+```
+
 ## Quick Start
 
 ### Using `mkFlake` (Recommended)
@@ -42,6 +56,7 @@ This gives you:
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     nlib.url = "github:Dauliac/nlib";
+    nlib.inputs.nixpkgs-lib.follows = "nixpkgs";
   };
 
   outputs = inputs:
@@ -110,15 +125,25 @@ inputs.nlib.mkFlake {
 
 ### Using flake-parts Module (Alternative)
 
+Two import tiers are available:
+
 ```nix
 {
-  inputs.nlib.url = "github:Dauliac/nlib";
+  inputs = {
+    nlib.url = "github:Dauliac/nlib";
+    nlib.inputs.nixpkgs-lib.follows = "nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+  };
 
-  outputs = { nlib, ... }:
-    nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [ nlib.flakeModules.default ];
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      # Full: libs + docs package + per-system support (lazy pkgs)
+      imports = [ inputs.nlib.flakeModules.default ];
 
-      # Define a pure flake-level lib
+      # Or pure: zero pkgs dependency, no docs, no per-system
+      # imports = [ inputs.nlib.flakeModules.pure ];
+
       nix-lib.lib.double = {
         type = lib.types.functionTo lib.types.int;
         fn = x: x * 2;
@@ -128,6 +153,11 @@ inputs.nlib.mkFlake {
     };
 }
 ```
+
+| Module | pkgs needed | Includes |
+|--------|-------------|----------|
+| `flakeModules.default` | only when building docs | Everything: libs, docs, per-system, adapters |
+| `flakeModules.pure` | never | Libs, adapters, test generation (no docs, no per-system) |
 
 See `examples/` and `tests/scenarios/` for complete working examples.
 
@@ -371,10 +401,11 @@ Per-system libs are available at `legacyPackages.<system>.lib.<namespace>.*`.
 
 Import the adapter for your module system. Libs are automatically available at `config.lib.*`:
 
-| Module | Import path |
-|--------|-------------|
-| `flakeModules.default` | `inputs.nix-lib.flakeModules.default` |
-| `nixosModules.default` | `nix-lib.nixosModules.default` |
+| Module | Import path | Description |
+|--------|-------------|-------------|
+| `flakeModules.default` | `inputs.nix-lib.flakeModules.default` | Full experience (docs, per-system) |
+| `flakeModules.pure` | `inputs.nix-lib.flakeModules.pure` | Pure lib only (zero pkgs) |
+| `nixosModules.default` | `nix-lib.nixosModules.default` | |
 | `homeModules.default` | `nix-lib.homeModules.default` |
 | `darwinModules.default` | `nix-lib.darwinModules.default` |
 | `nixvimModules.default` | `nix-lib.nixvimModules.default` |
@@ -804,7 +835,6 @@ This runs each scenario in `tests/scenarios/` and reports pass/fail:
 | `standalone` | Standalone test setup |
 | `mkFlake-flake-parts` | mkFlake with flake-parts integration |
 | `mkFlake-standalone` | mkFlake without flake-parts |
-| `linter-fail` | Verifies linter correctly rejects invalid code |
 
 ## See Also
 
