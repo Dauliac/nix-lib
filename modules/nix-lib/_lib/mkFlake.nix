@@ -4,7 +4,7 @@
 # Optionally integrates with flake-parts for full features.
 #
 # Usage (standalone):
-#   nlib.mkFlake {
+#   nlib.lib.mkFlake {
 #     inherit inputs;
 #     modules = [ ./libs ];
 #   } {
@@ -12,7 +12,7 @@
 #   }
 #
 # Usage (with flake-parts):
-#   nlib.mkFlake {
+#   nlib.lib.mkFlake {
 #     inherit inputs;
 #     modules = [ ./libs ];
 #     flake-parts = inputs.flake-parts;

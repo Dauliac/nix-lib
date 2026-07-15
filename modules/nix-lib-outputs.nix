@@ -1,7 +1,7 @@
-# nix-lib flake outputs (flakeModules, nixosModules, lib.nix-lib.mkAdapter)
+# nix-lib flake outputs (flakeModules, nixosModules, etc.)
 #
-# Note: mkStandaloneLib is exported via lib.nix-lib.mkStandaloneLib
-# (defined in lib/flake.nix which exports nixLibLib as lib.nix-lib)
+# Public API (lib.*) is set via merge in flake.nix, not here,
+# because the dev partition also imports lib/flake.nix which sets flake.lib.
 { inputs, ... }:
 let
   nixLibLib = import ./nix-lib/_lib { inherit (inputs.nixpkgs-lib) lib; };

@@ -4,7 +4,7 @@
 # libs are available during ALL module phases (imports, options, config).
 #
 # This enables the composition pattern:
-#   (nix-lib.withLib { optionsLib = {...}; } flake-parts.lib.mkFlake)
+#   (nix-lib.lib.withLib { optionsLib = {...}; } flake-parts.lib.mkFlake)
 #     { inherit inputs; }
 #     modules
 #

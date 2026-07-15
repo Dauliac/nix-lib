@@ -1,12 +1,12 @@
 # mkAdapter - Factory to create nix-lib adapters for any module system
 #
 # Usage:
-#   imports = [ (nix-lib.mkAdapter { name = "nixos"; }) ];
-#   imports = [ (nix-lib.mkAdapter { name = "home-manager"; }) ];
-#   imports = [ (nix-lib.mkAdapter { name = "nixvim"; }) ];
+#   imports = [ (nix-lib.lib.mkAdapter { name = "nixos"; }) ];
+#   imports = [ (nix-lib.lib.mkAdapter { name = "home-manager"; }) ];
+#   imports = [ (nix-lib.lib.mkAdapter { name = "nixvim"; }) ];
 #
 # Or with explicit adapterDef:
-#   imports = [ (nix-lib.mkAdapter {
+#   imports = [ (nix-lib.lib.mkAdapter {
 #     name = "custom";
 #     adapterDef = {
 #       namespace = "custom";
