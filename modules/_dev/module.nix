@@ -1,13 +1,12 @@
-# Dev partition module — full dev tooling + tests as checks.
+# Dev partition module — full dev tooling + per-backend test checks.
 #
-# Follows the nix-oci pattern: the dev partition imports examples,
-# BDD tests, and all test-required inputs. Tests run as eval-time
-# checks, not as apps with recursive nix.
+# Each supported backend gets its own check derivation, run in parallel.
+# An aggregation check gates them all for `nix flake check`.
 #
 # Usage:
-#   nix flake check      # treefmt + unit tests + scenario tests (all as checks)
-#   nix fmt              # auto-format
-#   nix develop          # shell with nix-unit
+#   nix flake check              # treefmt + all backend tests (parallel)
+#   nix fmt                      # auto-format
+#   nix develop                  # shell with nix-unit
 #   nix build .#nix-lib-docs
 { inputs, config, ... }:
 {
@@ -15,6 +14,7 @@
     ../nix-lib/_default.nix
     inputs.treefmt-nix.flakeModule
     inputs.nix-unit.modules.flake.default
+
     # Full integration examples — creates nixosConfigurations,
     # homeConfigurations, etc. for BDD + unit tests to validate.
     ../../examples/full-integration.nix
@@ -23,7 +23,7 @@
     ../../tests/bdd/libDef.nix
     ../../tests/bdd/collectors.nix
 
-    # Scenario tests — mkFlake, mkLib API tests as eval-time checks
+    # Scenario tests — mkFlake, mkLib, backend format checks
     ./scenario-checks.nix
   ];
 
@@ -32,8 +32,9 @@
     let
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
-      # All { expr, expected } test entries from flake.tests (BDD + auto-generated).
-      # Filter to JSON-serializable values only (no functions, no derivations).
+      # ── Test data ──────────────────────────────────────────────────
+      # All { expr, expected } tests from flake.tests (BDD + scenario + auto-generated).
+      # Filtered to JSON-serializable values only.
       isJsonSafe =
         v:
         builtins.isInt v
@@ -48,6 +49,68 @@
         _: test: test ? expr && test ? expected && isJsonSafe test.expr && isJsonSafe test.expected
       ) (config.flake.tests or { });
       testCount = builtins.length (builtins.attrNames allTests);
+
+      testsJson = pkgs.writeText "tests.json" (builtins.toJSON allTests);
+
+      # ── Per-backend checks ─────────────────────────────────────────
+
+      # 1. nix-unit: real CLI via JSON serialization
+      check-nix-unit =
+        pkgs.runCommand "check-nix-unit"
+          {
+            nativeBuildInputs = [
+              inputs.nix-unit.packages.${system}.default
+              pkgs.nix
+            ];
+          }
+          ''
+            export HOME=$(mktemp -d)
+            echo "nix-unit: running ${toString testCount} tests..."
+            nix-unit --expr "builtins.fromJSON (builtins.readFile ${testsJson})"
+            echo "nix-unit: ${toString testCount} tests passed"
+            touch $out
+          '';
+
+      # 2. runTests: pure Nix lib.debug.runTests (eval-time)
+      runTestsResults = lib.debug.runTests allTests;
+      check-runTests =
+        if runTestsResults != [ ] then
+          throw "runTests: ${toString (builtins.length runTestsResults)} failures: ${
+            builtins.toJSON (map (f: f.name) runTestsResults)
+          }"
+        else
+          pkgs.runCommand "check-runTests" { } ''
+            echo "runTests: ${toString testCount} tests passed"
+            touch $out
+          '';
+
+      # 3. nix-tests: real CLI with test file
+      nixTestsFile = pkgs.writeText "nix-tests-suite.nix" ''
+        let
+          tests = builtins.fromJSON (builtins.readFile ${testsJson});
+        in
+        {
+          "nix-lib" = helpers:
+            builtins.mapAttrs (name: test:
+              helpers.isEq test.expr test.expected
+            ) tests;
+        }
+      '';
+      check-nix-tests =
+        pkgs.runCommand "check-nix-tests"
+          {
+            nativeBuildInputs = [
+              inputs.nix-tests.packages.${system}.default
+              pkgs.nix
+            ];
+          }
+          ''
+            export HOME=$(mktemp -d)
+            echo "nix-tests: running ${toString testCount} tests..."
+            nix-tests ${nixTestsFile}
+            echo "nix-tests: passed"
+            touch $out
+          '';
     in
     {
       _module.args.pkgs = pkgs;
@@ -57,34 +120,17 @@
         programs.nixfmt.enable = true;
       };
 
-      # Disable nix-unit's flake-based check (needs flake resolution in sandbox).
-      # We replace it with a direct nix-unit check below.
-      checks.nix-unit = lib.mkForce (
-        let
-          nix-unit = inputs.nix-unit.packages.${system}.default;
-          # Serialize tests to JSON, then nix-unit reads them back via fromJSON.
-          # This avoids --flake (which needs git/network) while still exercising
-          # the real nix-unit CLI and its Nix evaluator.
-          testsJson = pkgs.writeText "tests.json" (builtins.toJSON allTests);
-        in
-        pkgs.runCommand "nix-unit"
-          {
-            nativeBuildInputs = [
-              nix-unit
-              pkgs.nix
-            ];
-          }
-          ''
-            export HOME=$(mktemp -d)
-            echo "Running ${toString testCount} tests through nix-unit..."
-            nix-unit --expr "builtins.fromJSON (builtins.readFile ${testsJson})"
-            touch $out
-          ''
-      );
+      # Disable nix-unit module's own check (uses --flake, needs git in sandbox)
+      checks.nix-unit = lib.mkForce check-nix-unit;
+
+      # Per-backend checks — each builds independently (parallel)
+      checks.backend-runTests = check-runTests;
+      checks.backend-nix-tests = check-nix-tests;
 
       devShells.default = pkgs.mkShell {
         packages = [
           inputs.nix-unit.packages.${system}.default
+          inputs.nix-tests.packages.${system}.default
         ];
       };
     };

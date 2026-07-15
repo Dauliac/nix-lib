@@ -11,6 +11,10 @@
       url = "github:nix-community/nix-unit";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-tests = {
+      url = "github:danielefongo/nix-tests";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Test-required: the BDD tests + examples need these to create
     # nixosConfigurations, homeConfigurations, etc.
     home-manager = {
