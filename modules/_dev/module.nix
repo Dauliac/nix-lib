@@ -121,11 +121,14 @@
       };
 
       # Disable nix-unit module's own check (uses --flake, needs git in sandbox)
-      checks.nix-unit = lib.mkForce check-nix-unit;
-
-      # Per-backend checks — each builds independently (parallel)
-      checks.backend-runTests = check-runTests;
-      checks.backend-nix-tests = check-nix-tests;
+      checks.nix-unit = lib.mkForce (
+        pkgs.runCommand "tests" { } ''
+          mkdir -p $out
+          ln -s ${check-nix-unit} $out/nix-unit
+          ln -s ${check-runTests} $out/runTests
+          ln -s ${check-nix-tests} $out/nix-tests
+        ''
+      );
 
       devShells.default = pkgs.mkShell {
         packages = [
