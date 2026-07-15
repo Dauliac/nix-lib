@@ -16,25 +16,43 @@ let
         type = self.types.functionTo self.types.int;
         fn = x: x * 2;
         description = "Double a number";
-        tests."doubles 5" = { args.x = 5; expected = 10; };
+        tests."doubles 5" = {
+          args.x = 5;
+          expected = 10;
+        };
       };
       quadruple = {
         type = self.types.functionTo self.types.int;
         fn = x: self.fns.double (self.fns.double x);
         description = "Quadruple using double";
-        tests."quadruples 3" = { args.x = 3; expected = 12; };
+        tests."quadruples 3" = {
+          args.x = 3;
+          expected = 12;
+        };
       };
       math.add = {
         type = self.types.functionTo self.types.int;
         fn = { a, b }: a + b;
         description = "Add two numbers";
-        tests."adds" = { args.x = { a = 2; b = 3; }; expected = 5; };
+        tests."adds" = {
+          args.x = {
+            a = 2;
+            b = 3;
+          };
+          expected = 5;
+        };
       };
       math.doubleSum = {
         type = self.types.functionTo self.types.int;
         fn = { a, b }: self.fns.double (self.fns.math.add { inherit a b; });
         description = "Double the sum";
-        tests."doubles sum" = { args.x = { a = 2; b = 3; }; expected = 10; };
+        tests."doubles sum" = {
+          args.x = {
+            a = 2;
+            b = 3;
+          };
+          expected = 10;
+        };
       };
     };
   };
@@ -67,12 +85,18 @@ let
           lib.math.double = {
             fn = x: x * 2;
             description = "Double";
-            tests."doubles 5" = { args.x = 5; expected = 10; };
+            tests."doubles 5" = {
+              args.x = 5;
+              expected = 10;
+            };
           };
           lib.math.quadruple = {
             fn = x: config.lib.math.double.fn (config.lib.math.double.fn x);
             description = "Quadruple";
-            tests."quadruples 3" = { args.x = 3; expected = 12; };
+            tests."quadruples 3" = {
+              args.x = 3;
+              expected = 12;
+            };
           };
         }
       )
@@ -93,17 +117,46 @@ let
           lib.math.double = {
             fn = x: x * 2;
             description = "Double";
-            tests."doubles 5" = { args.x = 5; expected = 10; };
+            tests."doubles 5" = {
+              args.x = 5;
+              expected = 10;
+            };
           };
           lib.math.quadruple = {
             fn = x: config.lib.math.double.fn (config.lib.math.double.fn x);
             description = "Quadruple";
-            tests."quadruples 3" = { args.x = 3; expected = 12; };
+            tests."quadruples 3" = {
+              args.x = 3;
+              expected = 12;
+            };
           };
         }
       )
     ];
   } { };
+
+  # ── Backend format tests ────────────────────────────────────────────
+  # Verify each backend adapter produces the correct output structure.
+  # Call adapters directly (not toBackend) since toBackend assumes attrset
+  # output but nixtest returns a list.
+  adapters = nlibLib.backends.adapters;
+  sampleFn = x: x * 2;
+  sampleTests = {
+    "doubles 5" = {
+      args = {
+        x = 5;
+      };
+      expected = 10;
+      assertions = [ ];
+    };
+  };
+
+  nixUnitOutput = adapters.nix-unit "double" sampleFn sampleTests;
+  namakaOutput = adapters.namaka "double" sampleFn sampleTests;
+  nixtOutput = adapters.nixt "double" sampleFn sampleTests;
+  nixtestOutput = adapters.nixtest "double" sampleFn sampleTests;
+  runTestsOutput = adapters.runTests "double" sampleFn sampleTests;
+  nixTestsOutput = adapters.nix-tests "double" sampleFn sampleTests;
 
   # ── Collect all scenario tests ─────────────────────────────────────
   scenarioTests = {
@@ -125,11 +178,17 @@ let
       expected = 12;
     };
     "test_mkLib_math_add" = {
-      expr = basicLib.lib.basic.math.add { a = 2; b = 3; };
+      expr = basicLib.lib.basic.math.add {
+        a = 2;
+        b = 3;
+      };
       expected = 5;
     };
     "test_mkLib_math_doubleSum" = {
-      expr = basicLib.lib.basic.math.doubleSum { a = 2; b = 3; };
+      expr = basicLib.lib.basic.math.doubleSum {
+        a = 2;
+        b = 3;
+      };
       expected = 10;
     };
     "test_mkLib_selfRef_works" = {
@@ -179,6 +238,80 @@ let
     "test_mkFlake_modules_quadruple" = {
       expr = mkFlakeWithModules.lib.math.quadruple 3;
       expected = 12;
+    };
+
+    # ── Backend format tests ───────────────────────────────────────
+
+    # nix-unit backend: { testName = { expr, expected } }
+    "test_backend_nix_unit_has_tests" = {
+      expr = nixUnitOutput != { };
+      expected = true;
+    };
+    "test_backend_nix_unit_format" = {
+      expr =
+        let
+          first = builtins.head (builtins.attrValues nixUnitOutput);
+        in
+        first ? expr && first ? expected;
+      expected = true;
+    };
+    "test_backend_nix_unit_value" = {
+      expr = (builtins.head (builtins.attrValues nixUnitOutput)).expr;
+      expected = 10;
+    };
+
+    # namaka backend: { testName = { expr, _expected } }
+    "test_backend_namaka_has_tests" = {
+      expr = namakaOutput != { };
+      expected = true;
+    };
+    "test_backend_namaka_format" = {
+      expr =
+        let
+          first = builtins.head (builtins.attrValues namakaOutput);
+        in
+        first ? expr && first ? _expected;
+      expected = true;
+    };
+    "test_backend_namaka_value" = {
+      expr = (builtins.head (builtins.attrValues namakaOutput)).expr;
+      expected = 10;
+    };
+    "test_backend_namaka_snapshot" = {
+      expr = (builtins.head (builtins.attrValues namakaOutput))._expected;
+      expected = 10;
+    };
+
+    # nixt backend: { block = [{ describe, tests }] }
+    "test_backend_nixt_has_block" = {
+      expr = nixtOutput ? block;
+      expected = true;
+    };
+    "test_backend_nixt_describe" = {
+      expr = (builtins.head nixtOutput.block).describe;
+      expected = "double";
+    };
+
+    # nixtest backend: verify it produces a list
+    "test_backend_nixtest_is_list" = {
+      expr = builtins.isList nixtestOutput;
+      expected = true;
+    };
+
+    # runTests backend: { testName = { expr, expected } }
+    "test_backend_runTests_has_tests" = {
+      expr = runTestsOutput != { };
+      expected = true;
+    };
+
+    # nix-tests backend: { groupName = helpers: { ... } }
+    "test_backend_nix_tests_has_group" = {
+      expr = nixTestsOutput ? double;
+      expected = true;
+    };
+    "test_backend_nix_tests_is_function" = {
+      expr = builtins.isFunction nixTestsOutput.double;
+      expected = true;
     };
   };
 in

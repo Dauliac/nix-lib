@@ -15,13 +15,11 @@
     ../nix-lib/_default.nix
     inputs.treefmt-nix.flakeModule
     inputs.nix-unit.modules.flake.default
-
     # Full integration examples — creates nixosConfigurations,
     # homeConfigurations, etc. for BDD + unit tests to validate.
     ../../examples/full-integration.nix
 
     # BDD tests — pure Nix assertions about library structure
-    ../../tests/bdd/adapters.nix
     ../../tests/bdd/libDef.nix
     ../../tests/bdd/collectors.nix
 
@@ -34,8 +32,21 @@
     let
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
-      # All { expr, expected } test entries from flake.tests (BDD + auto-generated)
-      allTests = lib.filterAttrs (_: test: test ? expr && test ? expected) (config.flake.tests or { });
+      # All { expr, expected } test entries from flake.tests (BDD + auto-generated).
+      # Filter to JSON-serializable values only (no functions, no derivations).
+      isJsonSafe =
+        v:
+        builtins.isInt v
+        || builtins.isBool v
+        || builtins.isString v
+        || builtins.isFloat v
+        || v == null
+        || (builtins.isList v && builtins.all isJsonSafe v)
+        || (builtins.isAttrs v && !(v ? outPath) && builtins.all isJsonSafe (builtins.attrValues v));
+
+      allTests = lib.filterAttrs (
+        _: test: test ? expr && test ? expected && isJsonSafe test.expr && isJsonSafe test.expected
+      ) (config.flake.tests or { });
       testCount = builtins.length (builtins.attrNames allTests);
     in
     {
@@ -56,17 +67,19 @@
           # the real nix-unit CLI and its Nix evaluator.
           testsJson = pkgs.writeText "tests.json" (builtins.toJSON allTests);
         in
-        pkgs.runCommand "nix-unit" {
-          nativeBuildInputs = [
-            nix-unit
-            pkgs.nix
-          ];
-        } ''
-          export HOME=$(mktemp -d)
-          echo "Running ${toString testCount} tests through nix-unit..."
-          nix-unit --expr "builtins.fromJSON (builtins.readFile ${testsJson})"
-          touch $out
-        ''
+        pkgs.runCommand "nix-unit"
+          {
+            nativeBuildInputs = [
+              nix-unit
+              pkgs.nix
+            ];
+          }
+          ''
+            export HOME=$(mktemp -d)
+            echo "Running ${toString testCount} tests through nix-unit..."
+            nix-unit --expr "builtins.fromJSON (builtins.readFile ${testsJson})"
+            touch $out
+          ''
       );
 
       devShells.default = pkgs.mkShell {
