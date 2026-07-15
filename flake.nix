@@ -11,7 +11,13 @@
       lib = inputs.nixpkgs.lib;
       nlibLib = import ./modules/nix-lib/_lib { inherit lib; };
     in
-    inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules)
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        ./modules/nix-lib-outputs.nix
+        ./modules/systems.nix
+        ./modules/_pkgs/e2e-tests.nix
+      ];
+    }
     // {
       inherit (nlibLib)
         mkFlake
@@ -28,7 +34,6 @@
       inputs.nixpkgs-lib.follows = "nixpkgs-lib";
       url = "github:hercules-ci/flake-parts";
     };
-    import-tree.url = "github:vic/import-tree";
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     nixpkgs-lib.follows = "nixpkgs";
   };

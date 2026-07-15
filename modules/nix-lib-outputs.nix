@@ -8,7 +8,7 @@ let
 in
 {
   # Consumers import this module via flake-parts
-  flake.flakeModules.default = inputs.import-tree ./nix-lib;
+  flake.flakeModules.default = import ./nix-lib/_default.nix;
 
   # Pure module — no pkgs, no docs, no per-system support.
   # For consumers who only need pure Nix lib wiring (issue #7).
