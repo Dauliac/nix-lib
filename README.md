@@ -633,17 +633,17 @@ nix-lib.testing = {
 
 ### Running Tests
 
-Run unit tests for a single scenario:
+Run all tests (format + 46 unit tests):
+
+```bash
+nix flake check
+```
+
+Run a single test scenario (standalone subflake):
 
 ```bash
 cd tests/scenarios/nix-unit
 nix run .#test
-```
-
-Run all E2E test scenarios:
-
-```bash
-nix run .#test-e2e
 ```
 
 ### Test Architecture
@@ -698,7 +698,7 @@ Tests are organized in three layers:
 | **perSystem tests** | `perSystem.nix-unit.tests` | System-specific lib checks |
 | **E2E scenarios** | `tests/scenarios/*/` | End-to-end integration per backend |
 
-All tests are merged into `flake.tests` and run together via `nix-unit --flake .#tests`. E2E scenarios are run via `nix run .#test-e2e`.
+All tests are merged into `flake.tests` and run as eval-time checks via `nix flake check`.
 
 ### Writing Tests
 
@@ -818,30 +818,10 @@ Nested namespaces create hierarchical headings in the output. For example, libs 
 
 When `nix-lib.docs.src` is set, the generator uses tree-sitter-nix to parse your source files and extract function implementation bodies. Without it, docs are generated in pure Nix (faster, but no implementation bodies).
 
-## E2E Test Runner
-
-nix-lib provides an E2E test runner that executes all test scenarios:
-
-```bash
-nix run .#test-e2e
-```
-
-This runs each scenario in `tests/scenarios/` and reports pass/fail:
-
-| Scenario | Description |
-|----------|-------------|
-| `nix-unit` | Tests using nix-unit backend |
-| `nix-tests` | Tests using nix-tests backend with devour-flake |
-| `standalone` | Standalone test setup |
-| `mkFlake-flake-parts` | mkFlake with flake-parts integration |
-| `mkFlake-standalone` | mkFlake without flake-parts |
-
 ## See Also
 
 - `examples/` - Working examples for each module system
 - `examples/docs.nix` - Documentation generator configuration and options
-- `examples/e2e-tests.nix` - E2E test runner usage and scenario structure
-- `tests/scenarios/mkFlake-standalone/` - mkFlake standalone example
-- `tests/scenarios/mkFlake-flake-parts/` - mkFlake with flake-parts example
+- `tests/scenarios/` - Backend compatibility test subflakes (nix-unit, nix-tests, standalone, mkFlake)
 - `tests/bdd/` - BDD tests for structure validation
 - `CONTRIBUTING.md` - Development and testing guide

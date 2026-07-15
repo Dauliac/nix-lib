@@ -56,7 +56,7 @@ let
         # Inline lib definitions or regular module attrset
         { lib, ... }: mod
     else if builtins.isList mod then
-      # List of modules (from import-tree) - process recursively
+      # List of modules - should be flattened before passing
       throw "evalLibModules: lists should be flattened before passing"
     else
       throw "evalLibModules: invalid module type: ${builtins.typeOf mod}";

@@ -1,5 +1,4 @@
 # Full nix-lib module — all features including docs and per-system libs.
-# Replaces import-tree for explicit, auditable imports.
 { ... }:
 {
   imports = [
