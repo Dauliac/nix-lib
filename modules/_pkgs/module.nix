@@ -3,7 +3,6 @@
 { ... }:
 {
   imports = [
-    ./nix-let-fn-linter.nix
     ./e2e-tests.nix
   ];
 }

@@ -25,7 +25,6 @@
     ./collectors/metaCollectors.nix
     ./collectors/systemCollectors.nix
     ./lib/flake.nix
-    ./linter.nix
     ./tests/flake.nix
     ./legacyPackages/lib.nix
     ./legacyPackages/nix-lib.nix

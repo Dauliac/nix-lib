@@ -54,21 +54,6 @@
             echo ""
           done
 
-          # Run linter-fail scenario (shell script based)
-          LINTER_FAIL_PATH="$SCENARIOS_DIR/linter-fail"
-          if [[ -x "$LINTER_FAIL_PATH/run-test.sh" ]]; then
-            echo "▶ Running scenario: linter-fail"
-            if (cd "$LINTER_FAIL_PATH" && ./run-test.sh) 2>&1 | sed 's/^/  /'; then
-              echo "✓ linter-fail passed"
-              ((PASSED++))
-            else
-              echo "✗ linter-fail failed"
-              ((FAILED++))
-              FAILED_SCENARIOS+=("linter-fail")
-            fi
-            echo ""
-          fi
-
           echo "=== E2E Test Summary ==="
           echo "Passed: $PASSED"
           echo "Failed: $FAILED"
