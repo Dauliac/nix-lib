@@ -36,9 +36,7 @@
 
       # All { expr, expected } test entries from flake.tests (BDD + auto-generated)
       allTests = lib.filterAttrs (_: test: test ? expr && test ? expected) (config.flake.tests or { });
-      failures = lib.filterAttrs (_: test: test.expr != test.expected) allTests;
       testCount = builtins.length (builtins.attrNames allTests);
-      failCount = builtins.length (builtins.attrNames failures);
     in
     {
       _module.args.pkgs = pkgs;
@@ -48,19 +46,28 @@
         programs.nixfmt.enable = true;
       };
 
-      # Disable nix-unit's own check (needs nix evaluator inside sandbox)
-      checks.nix-unit = lib.mkForce (pkgs.runCommand "nix-unit-skip" { } "touch $out");
-
-      # Eval-time unit tests — all { expr, expected } pairs from BDD + lib tests.
-      # Failures are caught at Nix eval time, before any derivation builds.
-      checks.unit-tests =
-        if failures != { } then
-          throw "Unit tests failed (${toString failCount}/${toString testCount}): ${builtins.concatStringsSep ", " (builtins.attrNames failures)}"
-        else
-          pkgs.runCommand "unit-tests-pass" { } ''
-            echo "${toString testCount} tests passed"
-            touch $out
-          '';
+      # Disable nix-unit's flake-based check (needs flake resolution in sandbox).
+      # We replace it with a direct nix-unit check below.
+      checks.nix-unit = lib.mkForce (
+        let
+          nix-unit = inputs.nix-unit.packages.${system}.default;
+          # Serialize tests to JSON, then nix-unit reads them back via fromJSON.
+          # This avoids --flake (which needs git/network) while still exercising
+          # the real nix-unit CLI and its Nix evaluator.
+          testsJson = pkgs.writeText "tests.json" (builtins.toJSON allTests);
+        in
+        pkgs.runCommand "nix-unit" {
+          nativeBuildInputs = [
+            nix-unit
+            pkgs.nix
+          ];
+        } ''
+          export HOME=$(mktemp -d)
+          echo "Running ${toString testCount} tests through nix-unit..."
+          nix-unit --expr "builtins.fromJSON (builtins.readFile ${testsJson})"
+          touch $out
+        ''
+      );
 
       devShells.default = pkgs.mkShell {
         packages = [
