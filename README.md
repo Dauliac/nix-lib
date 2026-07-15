@@ -48,7 +48,7 @@ nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
 
 ### Using `mkFlake` (Recommended)
 
-`nlib.mkFlake` is the main entry point. It evaluates lib modules and optionally integrates with flake-parts:
+`nlib.lib.mkFlake` is the main entry point. It evaluates lib modules and optionally integrates with flake-parts:
 
 ```nix
 {
@@ -60,7 +60,7 @@ nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
   };
 
   outputs = inputs:
-    inputs.nlib.mkFlake {
+    inputs.nlib.lib.mkFlake {
       inherit inputs;
       modules = [ ./libs/math.nix ];
       flake-parts = inputs.flake-parts;  # Optional: enables flake-parts integration
@@ -100,7 +100,7 @@ nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
 ```nix
 {
   outputs = inputs:
-    inputs.nlib.mkFlake {
+    inputs.nlib.lib.mkFlake {
       inherit inputs;
       modules = [ ./libs/math.nix ];
     } {
@@ -112,7 +112,7 @@ nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
 #### Importing External Libs
 
 ```nix
-inputs.nlib.mkFlake {
+inputs.nlib.lib.mkFlake {
   inherit inputs;
   modules = [
     ./libs/math.nix           # Your lib modules
@@ -165,7 +165,7 @@ See `examples/` and `tests/scenarios/` for complete working examples.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  nlib.mkFlake                                            │
+│  nlib.lib.mkFlake                                        │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │  1. Evaluate lib modules (BEFORE flake-parts)      │  │
 │  │     → produces lib.*                               │  │
@@ -548,7 +548,7 @@ Libs defined in wrapper configurations are collected at:
 
 ```nix
 # Create adapter for your custom module system
-flake.myModules.default = inputs.nix-lib.outputs.lib.nix-lib.mkAdapter {
+flake.myModules.default = inputs.nix-lib.lib.mkAdapter {
   name = "my-module-system";
   namespace = "my";
 };

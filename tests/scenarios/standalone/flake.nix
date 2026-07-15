@@ -14,7 +14,13 @@
   };
 
   outputs =
-    { self, get-flake, nixpkgs, nix-unit, ... }:
+    {
+      self,
+      get-flake,
+      nixpkgs,
+      nix-unit,
+      ...
+    }:
     let
       nlib = get-flake ../../..;
       system = "x86_64-linux";
@@ -60,9 +66,7 @@
           # Nested namespace test
           math.add = {
             type = self.types.functionTo self.types.int;
-            fn =
-              { a, b }:
-              a + b;
+            fn = { a, b }: a + b;
             description = "Add two numbers";
             tests."adds 2 and 3" = {
               args.x = {
@@ -75,9 +79,7 @@
 
           math.subtract = {
             type = self.types.functionTo self.types.int;
-            fn =
-              { a, b }:
-              a - b;
+            fn = { a, b }: a - b;
             description = "Subtract two numbers";
             tests."subtracts 5 and 3" = {
               args.x = {
@@ -91,9 +93,7 @@
           # Cross-namespace reference test
           math.doubleSum = {
             type = self.types.functionTo self.types.int;
-            fn =
-              { a, b }:
-              self.fns.double (self.fns.math.add { inherit a b; });
+            fn = { a, b }: self.fns.double (self.fns.math.add { inherit a b; });
             description = "Double the sum of two numbers";
             tests."doubles sum of 2 and 3" = {
               args.x = {

@@ -1,6 +1,6 @@
 # mkFlake standalone example (no flake-parts)
 #
-# This example shows how to use nlib.mkFlake without flake-parts.
+# This example shows how to use nlib.lib.mkFlake without flake-parts.
 # Lib modules are evaluated and lib.* is directly available in outputs.
 #
 # Usage:
@@ -11,7 +11,7 @@ let
   nixpkgs = builtins.getFlake "github:nixos/nixpkgs/nixpkgs-unstable";
   nlib = builtins.getFlake (toString ./..);
 in
-nlib.mkFlake
+nlib.lib.mkFlake
   {
     inputs = { inherit nixpkgs nlib; };
     modules = [
