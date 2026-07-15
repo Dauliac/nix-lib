@@ -4,7 +4,7 @@
 # (defined in lib/flake.nix which exports nixLibLib as lib.nix-lib)
 { inputs, ... }:
 let
-  nixLibLib = import ./nix-lib/_lib { inherit (inputs.nixpkgs) lib; };
+  nixLibLib = import ./nix-lib/_lib { inherit (inputs.nixpkgs-lib) lib; };
 in
 {
   # Consumers import this module via flake-parts

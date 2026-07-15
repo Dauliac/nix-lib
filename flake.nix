@@ -8,14 +8,15 @@
   outputs =
     inputs:
     let
-      lib = inputs.nixpkgs.lib;
+      lib = inputs.nixpkgs-lib.lib;
       nlibLib = import ./modules/nix-lib/_lib { inherit lib; };
     in
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
+        ./modules/nix-lib/_pure.nix
         ./modules/nix-lib-outputs.nix
         ./modules/systems.nix
-        ./modules/_pkgs/e2e-tests.nix
+        ./modules/partitions.nix
       ];
     }
     // {
@@ -34,8 +35,7 @@
       inputs.nixpkgs-lib.follows = "nixpkgs-lib";
       url = "github:hercules-ci/flake-parts";
     };
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nixpkgs-lib.follows = "nixpkgs";
+    nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
   };
 
 }
