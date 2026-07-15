@@ -16,7 +16,6 @@
     checks = "dev";
     devShells = "dev";
     formatter = "dev";
-    apps = "dev";
   };
 
   partitions.dev = {
