@@ -229,15 +229,19 @@
       };
 
       # All 6 backends tested in parallel via a single aggregation derivation.
-      checks.tests = pkgs.runCommand "tests" { } ''
-        mkdir -p $out
-        ln -s ${check-nix-unit} $out/nix-unit
-        ln -s ${check-runTests} $out/runTests
-        ln -s ${check-nix-tests} $out/nix-tests
-        ln -s ${check-nixtest} $out/nixtest
-        ln -s ${check-namaka} $out/namaka
-        ln -s ${check-nixt} $out/nixt
-      '';
+      checks.tests =
+        (pkgs.runCommand "tests" { } ''
+          mkdir -p $out
+          ln -s ${check-nix-unit} $out/nix-unit
+          ln -s ${check-runTests} $out/runTests
+          ln -s ${check-nix-tests} $out/nix-tests
+          ln -s ${check-nixtest} $out/nixtest
+          ln -s ${check-namaka} $out/namaka
+          ln -s ${check-nixt} $out/nixt
+        '')
+        // {
+          meta.description = "E2E tests: ${toString testCount} tests x 6 backends (nix-unit, runTests, nix-tests, nixtest, namaka, nixt)";
+        };
 
       devShells.default = pkgs.mkShell {
         packages = [
