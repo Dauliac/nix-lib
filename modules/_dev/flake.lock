@@ -221,6 +221,21 @@
         "type": "github"
       }
     },
+    "nixtest": {
+      "locked": {
+        "lastModified": 1712694952,
+        "narHash": "sha256-f8NufqWlnEbdHAUT34LcSCUBkQcGxJ8Cnn6UCPIBxuU=",
+        "owner": "jetify-com",
+        "repo": "nixtest",
+        "rev": "cdd1c7ed6cfb49e3c06702cd21f90924378f2083",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jetify-com",
+        "repo": "nixtest",
+        "type": "github"
+      }
+    },
     "nixvim": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -278,6 +293,7 @@
         "nix-tests": "nix-tests",
         "nix-unit": "nix-unit",
         "nixpkgs": "nixpkgs",
+        "nixtest": "nixtest",
         "nixvim": "nixvim",
         "system-manager": "system-manager",
         "treefmt-nix": "treefmt-nix_2"

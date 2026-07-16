@@ -102,6 +102,24 @@
             ) tests;
         }
       '';
+      # 4. nixtest (Jetify): pure Nix eval-time, values stringified as JSON
+      nixtestLib = import "${inputs.nixtest}/src/nixtest.nix";
+      nixtestTests = builtins.map (name: {
+        inherit name;
+        actual = builtins.toJSON allTests.${name}.expr;
+        expected = builtins.toJSON allTests.${name}.expected;
+      }) (builtins.attrNames allTests);
+      nixtestResult = nixtestLib.assertTests (nixtestLib.runTests nixtestTests);
+      check-nixtest =
+        if !(lib.hasInfix "PASS" nixtestResult) then
+          throw "nixtest: ${nixtestResult}"
+        else
+          pkgs.runCommand "check-nixtest" { } ''
+            echo "nixtest: ${toString testCount} tests passed"
+            touch $out
+          '';
+
+      # 5. nix-tests: real CLI with test file
       check-nix-tests =
         pkgs.runCommand "check-nix-tests"
           {
@@ -132,6 +150,7 @@
         ln -s ${check-nix-unit} $out/nix-unit
         ln -s ${check-runTests} $out/runTests
         ln -s ${check-nix-tests} $out/nix-tests
+        ln -s ${check-nixtest} $out/nixtest
       '';
 
       devShells.default = pkgs.mkShell {

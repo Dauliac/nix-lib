@@ -15,6 +15,7 @@
       url = "github:danielefongo/nix-tests";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixtest.url = "github:jetify-com/nixtest";
     # Test-required: the BDD tests + examples need these to create
     # nixosConfigurations, homeConfigurations, etc.
     home-manager = {
