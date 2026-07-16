@@ -1,35 +1,44 @@
-# Dev partition module — full dev tooling + per-backend test checks.
+# Dev partition module — full dev tooling + E2E backend checks.
 #
-# Each supported backend gets its own check derivation, run in parallel.
-# An aggregation check gates them all for `nix flake check`.
+# Each backend runs as a true E2E test: a self-contained flake is created
+# inside the sandbox, git-initialized, and the backend CLI runs against it.
+# Pure Nix backends (runTests, nixtest, namaka) run at eval time.
 #
 # Usage:
-#   nix flake check              # treefmt + all backend tests (parallel)
-#   nix fmt                      # auto-format
-#   nix develop                  # shell with nix-unit
+#   nix flake check      # treefmt + all 6 backends (parallel)
+#   nix fmt              # auto-format
+#   nix develop          # shell with test tools
 #   nix build .#nix-lib-docs
-{ inputs, config, ... }:
+{
+  inputs,
+  config,
+  lib,
+  ...
+}:
 {
   imports = [
     ../nix-lib/_default.nix
     inputs.treefmt-nix.flakeModule
-    # Declare flake.tests as mergeable (multiple modules contribute tests)
-    ({ lib, ... }: {
-      options.flake.tests = lib.mkOption {
-        type = lib.types.attrsOf lib.types.anything;
-        default = { };
-      };
-    })
 
-    # Full integration examples — creates nixosConfigurations,
-    # homeConfigurations, etc. for BDD + unit tests to validate.
+    # Declare flake.tests as mergeable (multiple modules contribute tests)
+    (
+      { lib, ... }:
+      {
+        options.flake.tests = lib.mkOption {
+          type = lib.types.attrsOf lib.types.anything;
+          default = { };
+        };
+      }
+    )
+
+    # Full integration examples
     ../../examples/full-integration.nix
 
-    # BDD tests — pure Nix assertions about library structure
+    # BDD tests
     ../../tests/bdd/libDef.nix
     ../../tests/bdd/collectors.nix
 
-    # Scenario tests — mkFlake, mkLib, backend format checks
+    # Scenario tests (mkFlake, mkLib, backend format)
     ./scenario-checks.nix
   ];
 
@@ -39,8 +48,6 @@
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
       # ── Test data ──────────────────────────────────────────────────
-      # All { expr, expected } tests from flake.tests (BDD + scenario + auto-generated).
-      # Filtered to JSON-serializable values only.
       isJsonSafe =
         v:
         builtins.isInt v
@@ -55,54 +62,83 @@
         _: test: test ? expr && test ? expected && isJsonSafe test.expr && isJsonSafe test.expected
       ) (config.flake.tests or { });
       testCount = builtins.length (builtins.attrNames allTests);
-
       testsJson = pkgs.writeText "tests.json" (builtins.toJSON allTests);
 
-      # ── Per-backend checks ─────────────────────────────────────────
+      # Shared: minimal flake that exports tests from JSON
+      testFlakeNix = builtins.toFile "flake.nix" ''
+        {
+          inputs = {};
+          outputs = _: {
+            tests = builtins.fromJSON (builtins.readFile ./tests.json);
+          };
+        }
+      '';
 
-      # 1. nix-unit: real CLI via JSON serialization
+      # Helper: set up a git flake dir in the sandbox
+      setupFlakeDir = ''
+        export HOME=$(mktemp -d)
+        export NIX_CONFIG="experimental-features = nix-command flakes"
+        mkdir -p $HOME/flake
+        cp ${testsJson} $HOME/flake/tests.json
+        cp ${testFlakeNix} $HOME/flake/flake.nix
+        cd $HOME/flake
+        git init -q && git add .
+      '';
+
+      # ── 1. nix-unit: real CLI against real flake ───────────────────
       check-nix-unit =
         pkgs.runCommand "check-nix-unit"
           {
             nativeBuildInputs = [
               inputs.nix-unit.packages.${system}.default
               pkgs.nix
+              pkgs.git
             ];
           }
           ''
-            export HOME=$(mktemp -d)
-            echo "nix-unit: running ${toString testCount} tests..."
-            nix-unit --expr "builtins.fromJSON (builtins.readFile ${testsJson})"
-            echo "nix-unit: ${toString testCount} tests passed"
+            ${setupFlakeDir}
+            echo "nix-unit: running ${toString testCount} tests via --flake..."
+            nix-unit --flake .#tests
             touch $out
           '';
 
-      # 2. runTests: pure Nix lib.debug.runTests (eval-time)
+      # ── 2. runTests: lib.debug.runTests (pure eval-time) ──────────
       runTestsResults = lib.debug.runTests allTests;
       check-runTests =
         if runTestsResults != [ ] then
-          throw "runTests: ${toString (builtins.length runTestsResults)} failures: ${
-            builtins.toJSON (map (f: f.name) runTestsResults)
-          }"
+          throw "runTests: ${toString (builtins.length runTestsResults)} failures"
         else
           pkgs.runCommand "check-runTests" { } ''
-            echo "runTests: ${toString testCount} tests passed"
+            echo "runTests: ${toString testCount} tests passed (eval-time)"
             touch $out
           '';
 
-      # 3. nix-tests: real CLI with test file
+      # ── 3. nix-tests: real CLI against .nix test file ─────────────
       nixTestsFile = pkgs.writeText "nix-tests-suite.nix" ''
-        let
-          tests = builtins.fromJSON (builtins.readFile ${testsJson});
-        in
-        {
+        let tests = builtins.fromJSON (builtins.readFile ${testsJson});
+        in {
           "nix-lib" = helpers:
             builtins.mapAttrs (name: test:
               helpers.isEq test.expr test.expected
             ) tests;
         }
       '';
-      # 4. nixtest (Jetify): pure Nix eval-time, values stringified as JSON
+      check-nix-tests =
+        pkgs.runCommand "check-nix-tests"
+          {
+            nativeBuildInputs = [
+              inputs.nix-tests.packages.${system}.default
+              pkgs.nix
+            ];
+          }
+          ''
+            export HOME=$(mktemp -d)
+            echo "nix-tests: running ${toString testCount} tests..."
+            nix-tests ${nixTestsFile}
+            touch $out
+          '';
+
+      # ── 4. nixtest (Jetify): pure Nix eval-time ───────────────────
       nixtestLib = import "${inputs.nixtest}/src/nixtest.nix";
       nixtestTests = builtins.map (name: {
         inherit name;
@@ -115,12 +151,11 @@
           throw "nixtest: ${nixtestResult}"
         else
           pkgs.runCommand "check-nixtest" { } ''
-            echo "nixtest: ${toString testCount} tests passed"
+            echo "nixtest: ${toString testCount} tests passed (eval-time)"
             touch $out
           '';
 
-      # 5. namaka: eval-time via namaka.lib.load with generated test dir + snapshots.
-      # Each test becomes a dir with expr.nix reading its value from a shared JSON file.
+      # ── 5. namaka: eval-time via namaka.lib.load with snapshots ───
       namakaAllData = pkgs.writeText "namaka-data.json" (builtins.toJSON allTests);
       namakaTestDir =
         let
@@ -131,12 +166,9 @@
             let
               sn = safeName name;
               test = allTests.${name};
-              # Write expr.nix that reads the shared JSON and extracts this test's expr
               exprNix = pkgs.writeText "${sn}-expr.nix" ''
-                let
-                  all = builtins.fromJSON (builtins.readFile ${namakaAllData});
-                in
-                all.${builtins.toJSON name}.expr
+                let all = builtins.fromJSON (builtins.readFile ${namakaAllData});
+                in all.${builtins.toJSON name}.expr
               '';
               snapshot = pkgs.writeText "${sn}-snapshot" "#json\n${builtins.toJSON test.expected}";
             in
@@ -150,15 +182,14 @@
           mkdir -p $out/_snapshots
           ${builtins.concatStringsSep "\n" (builtins.map mkTestDir testNames)}
         '';
-      # namaka.lib.load throws at eval time if any snapshot mismatches.
       check-namaka =
         assert inputs.namaka.lib.load { src = namakaTestDir; } == { };
         pkgs.runCommand "check-namaka" { } ''
-          echo "namaka: ${toString testCount} snapshot tests passed"
+          echo "namaka: ${toString testCount} snapshot tests passed (eval-time)"
           touch $out
         '';
 
-      # 6. nixt: write describe/it test file, run nixt CLI
+      # ── 6. nixt: real CLI against describe/it test file ───────────
       nixtTestFile = pkgs.writeText "nixt-suite.nix" ''
         { describe, it, ... }:
         let
@@ -185,26 +216,9 @@
             cp ${nixtTestFile} $HOME/tests/test.nix
             echo "nixt: running ${toString testCount} tests..."
             nixt $HOME/tests/
-            echo "nixt: passed"
             touch $out
           '';
 
-      # 7. nix-tests: real CLI with test file
-      check-nix-tests =
-        pkgs.runCommand "check-nix-tests"
-          {
-            nativeBuildInputs = [
-              inputs.nix-tests.packages.${system}.default
-              pkgs.nix
-            ];
-          }
-          ''
-            export HOME=$(mktemp -d)
-            echo "nix-tests: running ${toString testCount} tests..."
-            nix-tests ${nixTestsFile}
-            echo "nix-tests: passed"
-            touch $out
-          '';
     in
     {
       _module.args.pkgs = pkgs;
@@ -214,7 +228,7 @@
         programs.nixfmt.enable = true;
       };
 
-      # All backends tested in parallel via a single aggregation derivation.
+      # All 6 backends tested in parallel via a single aggregation derivation.
       checks.tests = pkgs.runCommand "tests" { } ''
         mkdir -p $out
         ln -s ${check-nix-unit} $out/nix-unit
