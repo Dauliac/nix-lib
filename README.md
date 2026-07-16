@@ -818,6 +818,85 @@ Nested namespaces create hierarchical headings in the output. For example, libs 
 
 When `nix-lib.docs.src` is set, the generator uses tree-sitter-nix to parse your source files and extract function implementation bodies. Without it, docs are generated in pure Nix (faster, but no implementation bodies).
 
+## Migrating from v1 to v2
+
+v2.0.0 is a breaking change. The library API (`nix-lib.lib.*`, adapters, module options) is unchanged, but flake inputs, imports, and some outputs changed.
+
+### 1. Update your flake input
+
+```diff
+  inputs = {
+-   nix-lib.url = "github:Dauliac/nix-lib";
++   nix-lib.url = "github:Dauliac/nix-lib/v2.0.0";
++   nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
+  };
+```
+
+The `nixpkgs-lib.follows` deduplicates nix-lib's lightweight lib-only input with your full nixpkgs.
+
+### 2. Choose your import tier
+
+v2 offers two flake-parts modules:
+
+```nix
+# Full (same as v1, includes docs + per-system libs):
+imports = [ inputs.nix-lib.flakeModules.default ];
+
+# Pure (new — zero pkgs dependency, no docs, no per-system):
+imports = [ inputs.nix-lib.flakeModules.pure ];
+```
+
+### 3. Top-level API moved to `lib.*`
+
+```diff
+- nix-lib.mkFlake { ... }
++ nix-lib.lib.mkFlake { ... }
+
+- nix-lib.mkAdapter { name = "nixos"; }
++ nix-lib.lib.mkAdapter { name = "nixos"; }
+
+- nix-lib.mkLib { ... }
++ nix-lib.lib.mkLib { ... }
+```
+
+### 4. NixOS example: use option paths, not imports
+
+```diff
+  # v1 (broken — infinite recursion):
+- { config, ... }: {
+-   imports = [ (config.lib.mkSystemdService "foo") ];
+- }
+
+  # v2 (correct — use specific option paths):
++ { config, ... }: {
++   systemd.services.foo = config.lib.mkSystemdService "foo";
++ }
+```
+
+Lib functions should return option-level values, not top-level config fragments.
+
+### 5. Removed: nix-let-fn-linter
+
+The `nix-let-fn-linter` package and `linterMeta` output were removed. If you referenced them, delete those references.
+
+### 6. Removed inputs (consumers no longer fetch these)
+
+These were dev-only and are now isolated in a partition:
+`systems`, `import-tree`, `treefmt-nix`, `nix-unit`, `devour-flake`, `get-flake`, `flake-file`
+
+If you used `follows` for any of these, remove them.
+
+### Summary of breaking changes
+
+| v1 | v2 |
+|----|-----|
+| 9 consumer inputs | 2 (flake-parts + nixpkgs-lib) |
+| `nix-lib.mkFlake` | `nix-lib.lib.mkFlake` |
+| `flakeModules.default` only | + `flakeModules.pure` |
+| `config.lib.*` in imports | `config.lib.*` in option paths only |
+| `linterMeta` output | removed |
+| `nix-let-fn-linter` package | removed |
+
 ## See Also
 
 - `examples/` - Working examples for each module system
