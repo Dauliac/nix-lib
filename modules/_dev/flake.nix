@@ -16,6 +16,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixtest.url = "github:jetify-com/nixtest";
+    namaka = {
+      url = "github:nix-community/namaka";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nixt = {
+      url = "github:nix-community/nixt";
+    };
     # Test-required: the BDD tests + examples need these to create
     # nixosConfigurations, homeConfigurations, etc.
     home-manager = {

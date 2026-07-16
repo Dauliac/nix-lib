@@ -119,7 +119,77 @@
             touch $out
           '';
 
-      # 5. nix-tests: real CLI with test file
+      # 5. namaka: eval-time via namaka.lib.load with generated test dir + snapshots.
+      # Each test becomes a dir with expr.nix reading its value from a shared JSON file.
+      namakaAllData = pkgs.writeText "namaka-data.json" (builtins.toJSON allTests);
+      namakaTestDir =
+        let
+          testNames = builtins.attrNames allTests;
+          safeName = name: builtins.replaceStrings [ " " "'" "\"" "/" ] [ "_" "" "" "_" ] name;
+          mkTestDir =
+            name:
+            let
+              sn = safeName name;
+              test = allTests.${name};
+              # Write expr.nix that reads the shared JSON and extracts this test's expr
+              exprNix = pkgs.writeText "${sn}-expr.nix" ''
+                let
+                  all = builtins.fromJSON (builtins.readFile ${namakaAllData});
+                in
+                all.${builtins.toJSON name}.expr
+              '';
+              snapshot = pkgs.writeText "${sn}-snapshot" "#json\n${builtins.toJSON test.expected}";
+            in
+            ''
+              mkdir -p $out/${sn}
+              cp ${exprNix} $out/${sn}/expr.nix
+              cp ${snapshot} $out/_snapshots/${sn}
+            '';
+        in
+        pkgs.runCommand "namaka-tests-src" { } ''
+          mkdir -p $out/_snapshots
+          ${builtins.concatStringsSep "\n" (builtins.map mkTestDir testNames)}
+        '';
+      # namaka.lib.load throws at eval time if any snapshot mismatches.
+      check-namaka =
+        assert inputs.namaka.lib.load { src = namakaTestDir; } == { };
+        pkgs.runCommand "check-namaka" { } ''
+          echo "namaka: ${toString testCount} snapshot tests passed"
+          touch $out
+        '';
+
+      # 6. nixt: write describe/it test file, run nixt CLI
+      nixtTestFile = pkgs.writeText "nixt-suite.nix" ''
+        { describe, it, ... }:
+        let
+          tests = builtins.fromJSON (builtins.readFile ${testsJson});
+          names = builtins.attrNames tests;
+        in
+        [
+          (describe "nix-lib" (builtins.map (name:
+            it name (tests.''${name}.expr == tests.''${name}.expected)
+          ) names))
+        ]
+      '';
+      check-nixt =
+        pkgs.runCommand "check-nixt"
+          {
+            nativeBuildInputs = [
+              inputs.nixt.packages.${system}.default
+              pkgs.nix
+            ];
+          }
+          ''
+            export HOME=$(mktemp -d)
+            mkdir -p $HOME/tests
+            cp ${nixtTestFile} $HOME/tests/test.nix
+            echo "nixt: running ${toString testCount} tests..."
+            nixt $HOME/tests/
+            echo "nixt: passed"
+            touch $out
+          '';
+
+      # 7. nix-tests: real CLI with test file
       check-nix-tests =
         pkgs.runCommand "check-nix-tests"
           {
@@ -151,6 +221,8 @@
         ln -s ${check-runTests} $out/runTests
         ln -s ${check-nix-tests} $out/nix-tests
         ln -s ${check-nixtest} $out/nixtest
+        ln -s ${check-namaka} $out/namaka
+        ln -s ${check-nixt} $out/nixt
       '';
 
       devShells.default = pkgs.mkShell {
