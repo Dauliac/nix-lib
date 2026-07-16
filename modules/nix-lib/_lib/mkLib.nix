@@ -8,7 +8,7 @@
 #
 # Usage:
 #   outputs = { nixpkgs, nlib, ... }:
-#     nlib.mkLib {
+#     nlib.lib.mkLib {
 #       inherit nixpkgs;
 #       namespace = "mylib";
 #       backend = "nix-unit";

@@ -1,14 +1,18 @@
-# nix-lib flake outputs (flakeModules, nixosModules, lib.nix-lib.mkAdapter)
+# nix-lib flake outputs (flakeModules, nixosModules, etc.)
 #
-# Note: mkStandaloneLib is exported via lib.nix-lib.mkStandaloneLib
-# (defined in lib/flake.nix which exports nixLibLib as lib.nix-lib)
+# Public API (lib.*) is set via merge in flake.nix, not here,
+# because the dev partition also imports lib/flake.nix which sets flake.lib.
 { inputs, ... }:
 let
-  nixLibLib = import ./nix-lib/_lib { inherit (inputs.nixpkgs) lib; };
+  nixLibLib = import ./nix-lib/_lib { inherit (inputs.nixpkgs-lib) lib; };
 in
 {
   # Consumers import this module via flake-parts
-  flake.flakeModules.default = inputs.import-tree ./nix-lib;
+  flake.flakeModules.default = import ./nix-lib/_default.nix;
+
+  # Pure module — no pkgs, no docs, no per-system support.
+  # For consumers who only need pure Nix lib wiring (issue #7).
+  flake.flakeModules.pure = import ./nix-lib/_pure.nix;
 
   # NixOS/home-manager modules for consumers
   # All adapters automatically merge libs into config.lib

@@ -1,52 +1,42 @@
-# DO-NOT-EDIT. This file was auto-generated using github:vic/flake-file.
-# Use `nix run .#write-flake` to regenerate it.
 {
   description = "nix-lib - Nix library module with tested, typed, documented functions";
 
+  # Public API is at lib.* (e.g., nlib.lib.mkFlake, nlib.lib.mkAdapter).
+  # These are pure functions that only need nixpkgs.lib — no pkgs instantiation
+  # required. Consumers use them directly without importing flake-parts modules.
   outputs =
     inputs:
     let
-      lib = inputs.nixpkgs.lib;
+      lib = inputs.nixpkgs-lib.lib;
       nlibLib = import ./modules/nix-lib/_lib { inherit lib; };
+      result = inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+        imports = [
+          ./modules/nix-lib-outputs.nix
+          ./modules/systems.nix
+          ./modules/partitions.nix
+        ];
+      };
     in
-    inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules)
+    result
     // {
-      inherit (nlibLib)
-        mkFlake
-        evalLibModules
-        mkSpecialArgsLib
-        mkLib
-        mkAdapter
-        withLib
-        ;
+      lib = (result.lib or { }) // {
+        inherit (nlibLib)
+          mkFlake
+          evalLibModules
+          mkSpecialArgsLib
+          mkLib
+          mkAdapter
+          withLib
+          ;
+      };
     };
 
   inputs = {
-    devour-flake = {
-      flake = false;
-      url = "github:srid/devour-flake";
-    };
-    flake-file.url = "github:vic/flake-file";
     flake-parts = {
       inputs.nixpkgs-lib.follows = "nixpkgs-lib";
       url = "github:hercules-ci/flake-parts";
     };
-    get-flake.url = "github:ursi/get-flake";
-    import-tree.url = "github:vic/import-tree";
-    nix-unit = {
-      inputs = {
-        flake-parts.follows = "flake-parts";
-        nixpkgs.follows = "nixpkgs";
-      };
-      url = "github:nix-community/nix-unit";
-    };
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nixpkgs-lib.follows = "nixpkgs";
-    systems.url = "github:nix-systems/default";
-    treefmt-nix = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:numtide/treefmt-nix";
-    };
+    nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
   };
 
 }

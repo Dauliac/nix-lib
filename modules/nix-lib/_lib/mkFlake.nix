@@ -4,7 +4,7 @@
 # Optionally integrates with flake-parts for full features.
 #
 # Usage (standalone):
-#   nlib.mkFlake {
+#   nlib.lib.mkFlake {
 #     inherit inputs;
 #     modules = [ ./libs ];
 #   } {
@@ -12,7 +12,7 @@
 #   }
 #
 # Usage (with flake-parts):
-#   nlib.mkFlake {
+#   nlib.lib.mkFlake {
 #     inherit inputs;
 #     modules = [ ./libs ];
 #     flake-parts = inputs.flake-parts;
@@ -27,7 +27,7 @@
   # Flake inputs (required)
   inputs,
   # Lib modules to evaluate
-  modules ? [],
+  modules ? [ ],
   # Optional: flake-parts input for integration
   flake-parts ? null,
 }:
@@ -42,9 +42,7 @@ let
   };
 
   # Extend nixpkgs lib with evaluated libs
-  extendedLib = lib.extend (final: prev:
-    evaluated.fns
-  );
+  extendedLib = lib.extend (final: prev: evaluated.fns);
 
   # Base lib outputs (always present)
   libOutputs = {
@@ -61,20 +59,23 @@ in
 if hasFlakeParts then
   # Flake-parts mode: wrap flake-parts.lib.mkFlake
   let
-    flakePartsResult = flake-parts.lib.mkFlake {
-      inherit inputs;
-      specialArgs = {
-        lib = extendedLib;
-      };
-    } {
-      imports = [
-        # User's flake-parts configuration as a module
-        outputsOrModules
-      ];
-    };
+    flakePartsResult =
+      flake-parts.lib.mkFlake
+        {
+          inherit inputs;
+          specialArgs = {
+            lib = extendedLib;
+          };
+        }
+        {
+          imports = [
+            # User's flake-parts configuration as a module
+            outputsOrModules
+          ];
+        };
   in
-    # Merge flake-parts outputs with lib outputs
-    flakePartsResult // libOutputs
+  # Merge flake-parts outputs with lib outputs
+  flakePartsResult // libOutputs
 else
   # Standalone mode: just merge outputs
   let
@@ -85,4 +86,4 @@ else
       else
         outputsOrModules;
   in
-    libOutputs // resolvedOutputs
+  libOutputs // resolvedOutputs

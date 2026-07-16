@@ -4,7 +4,7 @@
 # libs are available during ALL module phases (imports, options, config).
 #
 # This enables the composition pattern:
-#   (nix-lib.withLib { optionsLib = {...}; } flake-parts.lib.mkFlake)
+#   (nix-lib.lib.withLib { optionsLib = {...}; } flake-parts.lib.mkFlake)
 #     { inherit inputs; }
 #     modules
 #
@@ -39,14 +39,17 @@ let
   originalLib = args.specialArgs.lib or (if baseLib != null then baseLib else lib);
 
   # Extend lib with the optionsLib under the specified namespace
-  extendedLib = originalLib.extend (final: prev: {
-    ${namespace} = optionsLib;
-  });
+  extendedLib = originalLib.extend (
+    final: prev: {
+      ${namespace} = optionsLib;
+    }
+  );
 in
-mkFlakeFn
-  (args // {
+mkFlakeFn (
+  args
+  // {
     specialArgs = (args.specialArgs or { }) // {
       lib = extendedLib;
     };
-  })
-  module
+  }
+) module

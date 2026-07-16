@@ -15,9 +15,10 @@ let
 
   # Get flake-level lib metadata, prefixed with "flake."
   rawFlakeLibsMeta = config.nix-lib._flakeLibsMeta or { };
-  flakeLibsMeta = lib.mapAttrs' (
-    name: value: { name = "flake.${name}"; inherit value; }
-  ) rawFlakeLibsMeta;
+  flakeLibsMeta = lib.mapAttrs' (name: value: {
+    name = "flake.${name}";
+    inherit value;
+  }) rawFlakeLibsMeta;
 
   # Get collected metadata from all module systems (keyed by namespace)
   collectedMeta = lib.mapAttrs (_: collector: collector config) (
@@ -30,7 +31,11 @@ let
     let
       meta = collectedMeta.${ns};
     in
-    acc // (lib.mapAttrs' (name: value: { name = "${ns}.${name}"; inherit value; }) meta)
+    acc
+    // (lib.mapAttrs' (name: value: {
+      name = "${ns}.${name}";
+      inherit value;
+    }) meta)
   ) { } (lib.attrNames collectedMeta);
 
   # All flake-level metadata (flake libs + collected from nixos/home/etc)
@@ -112,19 +117,12 @@ in
             m:
             let
               fn = m.fn or null;
-              fnArgs =
-                if fn != null && builtins.isFunction fn then builtins.functionArgs fn else { };
+              fnArgs = if fn != null && builtins.isFunction fn then builtins.functionArgs fn else { };
               hasSetPattern = fnArgs != { };
               argNames = builtins.attrNames fnArgs;
-              argEntries = map (
-                name:
-                if fnArgs.${name} then "${name} ? ..." else name
-              ) argNames;
+              argEntries = map (name: if fnArgs.${name} then "${name} ? ..." else name) argNames;
             in
-            if hasSetPattern then
-              "{ ${lib.concatStringsSep ", " argEntries} }"
-            else
-              null;
+            if hasSetPattern then "{ ${lib.concatStringsSep ", " argEntries} }" else null;
           serializable = lib.mapAttrs (
             _: m:
             builtins.removeAttrs m [ "fn" ]
@@ -169,22 +167,26 @@ in
           headerFile = pkgs.writeText "nix-lib-header-${name}.md" pageCfg.header;
         in
         if cfg.src != null then
-          pkgs.runCommand "nix-lib-page-${name}" {
-            nativeBuildInputs = [ pythonWithTreeSitter ];
-            passAsFile = [ "metadata" ];
-            metadata = pageJson;
-          } ''
-            python3 ${generateScript} \
-              ${treeSitterNix}/parser \
-              "$metadataPath" \
-              ${cfg.src} \
-              $TMPDIR/generated.md
-            cat ${headerFile} $TMPDIR/generated.md > $out
-          ''
+          pkgs.runCommand "nix-lib-page-${name}"
+            {
+              nativeBuildInputs = [ pythonWithTreeSitter ];
+              passAsFile = [ "metadata" ];
+              metadata = pageJson;
+            }
+            ''
+              python3 ${generateScript} \
+                ${treeSitterNix}/parser \
+                "$metadataPath" \
+                ${cfg.src} \
+                $TMPDIR/generated.md
+              cat ${headerFile} $TMPDIR/generated.md > $out
+            ''
         else
           pkgs.writeText "nix-lib-page-${name}" (
-            pageCfg.header + markdown.generateMarkdown (
-              pageMeta // {
+            pageCfg.header
+            + markdown.generateMarkdown (
+              pageMeta
+              // {
                 __docsOptions = {
                   inherit (pageCfg) showTitle showIndex headingLevel;
                 };
@@ -199,7 +201,12 @@ in
         else
           {
             docs = {
-              inherit (cfg) header headingLevel showIndex showTitle;
+              inherit (cfg)
+                header
+                headingLevel
+                showIndex
+                showTitle
+                ;
               metadata = null;
             };
           };
@@ -212,9 +219,7 @@ in
           mkdir -p $out
         ''
         + lib.concatStringsSep "\n" (
-          lib.mapAttrsToList (
-            name: drv: "cp ${drv} $out/${name}.md"
-          ) pageDerivations
+          lib.mapAttrsToList (name: drv: "cp ${drv} $out/${name}.md") pageDerivations
         )
       );
     in

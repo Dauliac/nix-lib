@@ -1,12 +1,12 @@
 # mkAdapter - Factory to create nix-lib adapters for any module system
 #
 # Usage:
-#   imports = [ (nix-lib.mkAdapter { name = "nixos"; }) ];
-#   imports = [ (nix-lib.mkAdapter { name = "home-manager"; }) ];
-#   imports = [ (nix-lib.mkAdapter { name = "nixvim"; }) ];
+#   imports = [ (nix-lib.lib.mkAdapter { name = "nixos"; }) ];
+#   imports = [ (nix-lib.lib.mkAdapter { name = "home-manager"; }) ];
+#   imports = [ (nix-lib.lib.mkAdapter { name = "nixvim"; }) ];
 #
 # Or with explicit adapterDef:
-#   imports = [ (nix-lib.mkAdapter {
+#   imports = [ (nix-lib.lib.mkAdapter {
 #     name = "custom";
 #     adapterDef = {
 #       namespace = "custom";
@@ -221,6 +221,11 @@ let
   # Own libs from nix-lib.fns (resolved, after potential overrides)
   ownLibs = if cfg.enable then buildVisibleFnsStructure config.nix-lib.fns else { };
 
+  # Wrap top-level functions for systems with builtin lib option (e.g. NixOS
+  # defines options.lib as attrsOf attrs). __functor makes attrsets callable.
+  wrapFnsForBuiltinLib =
+    libs: lib.mapAttrs (_: v: if builtins.isFunction v then { __functor = _: v; } else v) libs;
+
   # Merged libs for config.lib
   mergedLibs = ownLibs // nestedLibs;
 
@@ -304,7 +309,8 @@ in
     nix-lib._nestedFns = nestedLibs;
 
     # Alias visible functions to config.lib (merged with nested)
-    lib = mergedLibs;
+    # Wrap for systems with builtin lib option whose type rejects functions
+    lib = if resolvedDef.hasBuiltinLib then wrapFnsForBuiltinLib mergedLibs else mergedLibs;
 
     nix-lib.namespace = lib.mkDefault resolvedDef.namespace;
 

@@ -1,6 +1,6 @@
 # mkFlake with flake-parts example
 #
-# This example shows how to use nlib.mkFlake with flake-parts integration.
+# This example shows how to use nlib.lib.mkFlake with flake-parts integration.
 # Libs are available in the `lib` argument during OPTIONS phase!
 #
 # Usage in a real flake.nix:
@@ -13,7 +13,7 @@
 #     };
 #
 #     outputs = inputs:
-#       inputs.nlib.mkFlake {
+#       inputs.nlib.lib.mkFlake {
 #         inherit inputs;
 #         modules = [
 #           ./libs/math.nix

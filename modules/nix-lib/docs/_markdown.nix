@@ -54,10 +54,7 @@ let
       fnArgs = if fn != null && builtins.isFunction fn then builtins.functionArgs fn else { };
       hasSetPattern = fnArgs != { };
       argNames = builtins.attrNames fnArgs;
-      argEntries = map (
-        name:
-        if fnArgs.${name} then "${name} ? ..." else name
-      ) argNames;
+      argEntries = map (name: if fnArgs.${name} then "${name} ? ..." else name) argNames;
     in
     if hasSetPattern then
       "{ ${lib.concatStringsSep ", " argEntries} }"
@@ -73,10 +70,7 @@ let
           else
             [ ];
       in
-      if testArgNames != [ ] then
-        lib.concatStringsSep " → " testArgNames
-      else
-        null;
+      if testArgNames != [ ] then lib.concatStringsSep " → " testArgNames else null;
 
   # Generate index entry for a single lib
   libToIndexEntry =
@@ -102,8 +96,7 @@ let
           let
             t = tests.${testName};
             argsStr = valueToNix (t.args or { });
-            expectedStr =
-              if t.expected or null != null then valueToNix t.expected else "*(assertions)*";
+            expectedStr = if t.expected or null != null then valueToNix t.expected else "*(assertions)*";
           in
           "| ${testName} | `${argsStr}` | `${expectedStr}` |"
         ) testNames;
@@ -129,11 +122,7 @@ let
       descStr = meta.description or "No description";
       argsStr =
         let
-          rendered =
-            if meta.fnSignature or null != null then
-              meta.fnSignature
-            else
-              fnArgsToString meta;
+          rendered = if meta.fnSignature or null != null then meta.fnSignature else fnArgsToString meta;
         in
         if rendered != null then
           ''
@@ -227,9 +216,7 @@ let
     let
       # Render libs at this level
       libsHere = tree.__libs or [ ];
-      libDocs = lib.concatMapStrings (
-        entry: libToMarkdown libLevel entry.name entry.meta
-      ) libsHere;
+      libDocs = lib.concatMapStrings (entry: libToMarkdown libLevel entry.name entry.meta) libsHere;
 
       # Render sub-namespaces
       subKeys = builtins.sort (a: b: a < b) (
@@ -272,8 +259,7 @@ let
                 entry:
                 let
                   anchor = nameToAnchor entry.name;
-                  fileLink =
-                    if entry.meta.file or null != null then " ([source](${entry.meta.file}))" else "";
+                  fileLink = if entry.meta.file or null != null then " ([source](${entry.meta.file}))" else "";
                 in
                 "${indent}- [`${entry.name}`](#${anchor})${fileLink}"
               ) libsHere;
@@ -284,7 +270,12 @@ let
                 key: "${indent}- **${key}**\n${renderIndexTree tree.${key} (depth + 1)}"
               ) subKeys;
             in
-            lib.concatStringsSep "\n" (lib.filter (s: s != "") [ libEntries subEntries ]);
+            lib.concatStringsSep "\n" (
+              lib.filter (s: s != "") [
+                libEntries
+                subEntries
+              ]
+            );
           nsTree = buildNamespaceTree cleanMeta allSortedLibNames;
         in
         renderIndexTree nsTree 0;

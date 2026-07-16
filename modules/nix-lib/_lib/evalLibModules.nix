@@ -13,19 +13,25 @@
 { lib }:
 let
   libDefTypeModule = import ./libDefType.nix { inherit lib; };
-  inherit (libDefTypeModule) flattenLibs unflattenFns extractFnsFlat libDefsToMeta;
+  inherit (libDefTypeModule)
+    flattenLibs
+    unflattenFns
+    extractFnsFlat
+    libDefsToMeta
+    ;
   backendsModule = import ./backends.nix { inherit lib; };
   inherit (backendsModule) toBackend;
 in
 {
   modules,
   # Extra arguments passed to lib modules
-  extraArgs ? {},
+  extraArgs ? { },
 }:
 let
   # Process import-style modules: { inherit soonix; } -> soonix.lib
   # vs regular modules: { lib, ... }: { lib.foo = ...; }
-  processModule = mod:
+  processModule =
+    mod:
     if builtins.isFunction mod then
       # Regular module function
       mod
@@ -42,14 +48,15 @@ let
       # If the value has a .lib attribute, it's an external input
       if builtins.length keys == 1 && (firstVal.lib or null) != null then
         # External input: { inherit soonix; } -> { lib.soonix = soonix.lib; }
-        { lib, ... }: {
+        { lib, ... }:
+        {
           lib.${firstKey} = firstVal.lib;
         }
       else
         # Inline lib definitions or regular module attrset
         { lib, ... }: mod
     else if builtins.isList mod then
-      # List of modules (from import-tree) - process recursively
+      # List of modules - should be flattened before passing
       throw "evalLibModules: lists should be flattened before passing"
     else
       throw "evalLibModules: invalid module type: ${builtins.typeOf mod}";
@@ -61,7 +68,7 @@ let
   libModuleType = lib.types.submodule {
     options.lib = lib.mkOption {
       type = lib.types.lazyAttrsOf lib.types.unspecified;
-      default = {};
+      default = { };
       description = "Lib definitions";
     };
   };
@@ -72,12 +79,15 @@ let
       {
         options.lib = lib.mkOption {
           type = lib.types.lazyAttrsOf lib.types.unspecified;
-          default = {};
+          default = { };
           description = "Lib definitions organized by namespace";
         };
       }
     ];
-    specialArgs = { inherit lib; } // extraArgs;
+    specialArgs = {
+      inherit lib;
+    }
+    // extraArgs;
   };
 
   # Get the evaluated lib config
@@ -98,7 +108,8 @@ let
   # Generate tests
   tests = toBackend "nix-unit" meta;
 
-in {
+in
+{
   # The actual functions, nested: { math.double, string.format, ... }
   fns = nestedFns;
 

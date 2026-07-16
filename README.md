@@ -30,11 +30,25 @@ This gives you:
 - **Composition** - use the NixOS module system to combine libraries
 - **Nested propagation** - libs from nested modules (home-manager in NixOS) are accessible in parent scope
 
+## Consumer Inputs
+
+nix-lib is designed to be lightweight. Consumers only fetch:
+
+- **flake-parts** — the module system framework
+- **nixpkgs-lib** — lib-only subset of nixpkgs (~few MB, NOT the full ~500MB checkout)
+
+Full `nixpkgs` is never fetched from nix-lib. Consumers provide their own for `pkgs`.
+
+```nix
+# Deduplicate nixpkgs-lib with your own nixpkgs:
+nix-lib.inputs.nixpkgs-lib.follows = "nixpkgs";
+```
+
 ## Quick Start
 
 ### Using `mkFlake` (Recommended)
 
-`nlib.mkFlake` is the main entry point. It evaluates lib modules and optionally integrates with flake-parts:
+`nlib.lib.mkFlake` is the main entry point. It evaluates lib modules and optionally integrates with flake-parts:
 
 ```nix
 {
@@ -42,10 +56,11 @@ This gives you:
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     nlib.url = "github:Dauliac/nlib";
+    nlib.inputs.nixpkgs-lib.follows = "nixpkgs";
   };
 
   outputs = inputs:
-    inputs.nlib.mkFlake {
+    inputs.nlib.lib.mkFlake {
       inherit inputs;
       modules = [ ./libs/math.nix ];
       flake-parts = inputs.flake-parts;  # Optional: enables flake-parts integration
@@ -85,7 +100,7 @@ This gives you:
 ```nix
 {
   outputs = inputs:
-    inputs.nlib.mkFlake {
+    inputs.nlib.lib.mkFlake {
       inherit inputs;
       modules = [ ./libs/math.nix ];
     } {
@@ -97,7 +112,7 @@ This gives you:
 #### Importing External Libs
 
 ```nix
-inputs.nlib.mkFlake {
+inputs.nlib.lib.mkFlake {
   inherit inputs;
   modules = [
     ./libs/math.nix           # Your lib modules
@@ -110,15 +125,25 @@ inputs.nlib.mkFlake {
 
 ### Using flake-parts Module (Alternative)
 
+Two import tiers are available:
+
 ```nix
 {
-  inputs.nlib.url = "github:Dauliac/nlib";
+  inputs = {
+    nlib.url = "github:Dauliac/nlib";
+    nlib.inputs.nixpkgs-lib.follows = "nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+  };
 
-  outputs = { nlib, ... }:
-    nlib.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [ nlib.flakeModules.default ];
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      # Full: libs + docs package + per-system support (lazy pkgs)
+      imports = [ inputs.nlib.flakeModules.default ];
 
-      # Define a pure flake-level lib
+      # Or pure: zero pkgs dependency, no docs, no per-system
+      # imports = [ inputs.nlib.flakeModules.pure ];
+
       nix-lib.lib.double = {
         type = lib.types.functionTo lib.types.int;
         fn = x: x * 2;
@@ -129,13 +154,18 @@ inputs.nlib.mkFlake {
 }
 ```
 
+| Module | pkgs needed | Includes |
+|--------|-------------|----------|
+| `flakeModules.default` | only when building docs | Everything: libs, docs, per-system, adapters |
+| `flakeModules.pure` | never | Libs, adapters, test generation (no docs, no per-system) |
+
 See `examples/` and `tests/scenarios/` for complete working examples.
 
 ## Lib Modules Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  nlib.mkFlake                                            │
+│  nlib.lib.mkFlake                                        │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │  1. Evaluate lib modules (BEFORE flake-parts)      │  │
 │  │     → produces lib.*                               │  │
@@ -371,10 +401,11 @@ Per-system libs are available at `legacyPackages.<system>.lib.<namespace>.*`.
 
 Import the adapter for your module system. Libs are automatically available at `config.lib.*`:
 
-| Module | Import path |
-|--------|-------------|
-| `flakeModules.default` | `inputs.nix-lib.flakeModules.default` |
-| `nixosModules.default` | `nix-lib.nixosModules.default` |
+| Module | Import path | Description |
+|--------|-------------|-------------|
+| `flakeModules.default` | `inputs.nix-lib.flakeModules.default` | Full experience (docs, per-system) |
+| `flakeModules.pure` | `inputs.nix-lib.flakeModules.pure` | Pure lib only (zero pkgs) |
+| `nixosModules.default` | `nix-lib.nixosModules.default` | |
 | `homeModules.default` | `nix-lib.homeModules.default` |
 | `darwinModules.default` | `nix-lib.darwinModules.default` |
 | `nixvimModules.default` | `nix-lib.nixvimModules.default` |
@@ -517,7 +548,7 @@ Libs defined in wrapper configurations are collected at:
 
 ```nix
 # Create adapter for your custom module system
-flake.myModules.default = inputs.nix-lib.outputs.lib.nix-lib.mkAdapter {
+flake.myModules.default = inputs.nix-lib.lib.mkAdapter {
   name = "my-module-system";
   namespace = "my";
 };
@@ -602,17 +633,17 @@ nix-lib.testing = {
 
 ### Running Tests
 
-Run unit tests for a single scenario:
+Run all tests (format + 46 unit tests):
+
+```bash
+nix flake check
+```
+
+Run a single test scenario (standalone subflake):
 
 ```bash
 cd tests/scenarios/nix-unit
 nix run .#test
-```
-
-Run all E2E test scenarios:
-
-```bash
-nix run .#test-e2e
 ```
 
 ### Test Architecture
@@ -667,7 +698,7 @@ Tests are organized in three layers:
 | **perSystem tests** | `perSystem.nix-unit.tests` | System-specific lib checks |
 | **E2E scenarios** | `tests/scenarios/*/` | End-to-end integration per backend |
 
-All tests are merged into `flake.tests` and run together via `nix-unit --flake .#tests`. E2E scenarios are run via `nix run .#test-e2e`.
+All tests are merged into `flake.tests` and run as eval-time checks via `nix flake check`.
 
 ### Writing Tests
 
@@ -787,31 +818,10 @@ Nested namespaces create hierarchical headings in the output. For example, libs 
 
 When `nix-lib.docs.src` is set, the generator uses tree-sitter-nix to parse your source files and extract function implementation bodies. Without it, docs are generated in pure Nix (faster, but no implementation bodies).
 
-## E2E Test Runner
-
-nix-lib provides an E2E test runner that executes all test scenarios:
-
-```bash
-nix run .#test-e2e
-```
-
-This runs each scenario in `tests/scenarios/` and reports pass/fail:
-
-| Scenario | Description |
-|----------|-------------|
-| `nix-unit` | Tests using nix-unit backend |
-| `nix-tests` | Tests using nix-tests backend with devour-flake |
-| `standalone` | Standalone test setup |
-| `mkFlake-flake-parts` | mkFlake with flake-parts integration |
-| `mkFlake-standalone` | mkFlake without flake-parts |
-| `linter-fail` | Verifies linter correctly rejects invalid code |
-
 ## See Also
 
 - `examples/` - Working examples for each module system
 - `examples/docs.nix` - Documentation generator configuration and options
-- `examples/e2e-tests.nix` - E2E test runner usage and scenario structure
-- `tests/scenarios/mkFlake-standalone/` - mkFlake standalone example
-- `tests/scenarios/mkFlake-flake-parts/` - mkFlake with flake-parts example
+- `tests/scenarios/` - Backend compatibility test subflakes (nix-unit, nix-tests, standalone, mkFlake)
 - `tests/bdd/` - BDD tests for structure validation
 - `CONTRIBUTING.md` - Development and testing guide
