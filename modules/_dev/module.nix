@@ -43,7 +43,12 @@
   ];
 
   perSystem =
-    { system, lib, ... }:
+    {
+      system,
+      lib,
+      config,
+      ...
+    }:
     let
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
@@ -219,6 +224,28 @@
             touch $out
           '';
 
+      # ── 7. docs: build nix-lib-docs and verify content ────────────
+      docsPackage = config.nix-lib.docs.package;
+      check-docs = pkgs.runCommand "check-docs" { } ''
+        echo "docs: verifying nix-lib-docs build output..."
+
+        # The docs package must build
+        test -d ${docsPackage} || (echo "FAIL: docs package not a directory" && exit 1)
+
+        # Verify markdown files exist
+        test -n "$(find ${docsPackage} -name '*.md' -type f)" || (echo "FAIL: no .md files" && exit 1)
+
+        # Verify key content exists (grep directly on files)
+        grep -rq "nixos.mkSystemdService" ${docsPackage} || (echo "FAIL: nixos.mkSystemdService not in docs" && exit 1)
+        grep -rq "flake.double" ${docsPackage} || (echo "FAIL: flake.double not in docs" && exit 1)
+        grep -rq "home.enableProgram" ${docsPackage} || (echo "FAIL: home.enableProgram not in docs" && exit 1)
+        grep -rq "Total libs:" ${docsPackage} || (echo "FAIL: no lib count in docs" && exit 1)
+
+        echo "docs: verified — markdown generated with expected content"
+        mkdir -p $out
+        ln -s ${docsPackage} $out/docs
+      '';
+
     in
     {
       _module.args.pkgs = pkgs;
@@ -228,7 +255,7 @@
         programs.nixfmt.enable = true;
       };
 
-      # All 6 backends tested in parallel via a single aggregation derivation.
+      # All 6 backends + docs tested in parallel via a single aggregation derivation.
       checks.tests =
         (pkgs.runCommand "tests" { } ''
           mkdir -p $out
@@ -238,9 +265,10 @@
           ln -s ${check-nixtest} $out/nixtest
           ln -s ${check-namaka} $out/namaka
           ln -s ${check-nixt} $out/nixt
+          ln -s ${check-docs} $out/docs
         '')
         // {
-          meta.description = "E2E tests: ${toString testCount} tests x 6 backends (nix-unit, runTests, nix-tests, nixtest, namaka, nixt)";
+          meta.description = "E2E tests: ${toString testCount} tests x 6 backends + docs generation";
         };
 
       devShells.default = pkgs.mkShell {
