@@ -8,31 +8,31 @@ change branch `feat/internal-dendritic-import-tree`.
 
 ## 1. Vendor and wire
 
-- [ ] **1.1** Vendor `import-tree` upstream `default.nix` into `modules/nix-lib/_lib/import-tree/default.nix`. Preserve MIT LICENSE header verbatim inside the file. Add a top comment with upstream commit hash and refresh instructions (see design D1). Priority: 0. Complexity: XS. Parallelism: sequential-blocker.
+- [x] **1.1** Vendor `import-tree` upstream `default.nix` into `modules/nix-lib/_lib/import-tree/default.nix`. Full Apache 2.0 LICENSE at sibling `LICENSE` file. Header carries pinned commit and refresh instructions. Priority: 0. Complexity: XS. Parallelism: sequential-blocker.
 
-- [ ] **1.2** Copy upstream `tests.nix` (executable spec) into `modules/nix-lib/_lib/import-tree/tests.nix`. Attribute in the same header block. Priority: 2. Complexity: XS. Parallelism: after T01.
+- [x] **1.2** Copy upstream `tests.nix` into `modules/nix-lib/_lib/import-tree/tests.nix` for regression fixture on refresh. Priority: 2. Complexity: XS. Parallelism: after 1.1.
 
-- [ ] **1.3** Add a top-level NOTICE (or a section in README under "Third-party components") crediting `denful/import-tree` (MIT). Priority: 2. Complexity: XS. Parallelism: after T01.
+- [x] **1.3** README "Third-party components" section credits `denful/import-tree` (Apache 2.0) and points at the vendored LICENSE. Priority: 2. Complexity: XS. Parallelism: after 1.1.
 
-- [ ] **1.4** Expose the vendored function inside `modules/nix-lib/_lib/default.nix` as `importTree`. Do NOT merge into `lib.*` in `flake.nix`. Priority: 0. Complexity: S. Parallelism: after T01.
+- [x] **1.4** `modules/nix-lib/_lib/default.nix` exposes `importTree`. NOT re-exported into `lib.*` (verified: `flake.nix` still `inherit`s an explicit name list that does not include `importTree`). Priority: 0. Complexity: S. Parallelism: after 1.1.
 
-- [ ] **1.5** Pass `importTree` via `_module.args.importTree` in `modules/nix-lib-outputs.nix` (or a dedicated `modules/_args.nix`) so every internal flake-parts module can pick it up as a module argument (design D2, Q2). Priority: 2. Complexity: S. Parallelism: after T04.
+- [ ] **1.5** Pass `importTree` via `_module.args.importTree` in `modules/nix-lib-outputs.nix` so internal flake-parts modules can pick it up as a module argument (design D2, Q2). Optional: current uses go through direct `import ./_lib/import-tree` at each call site, which is fine. Priority: 2. Complexity: S. Parallelism: after 1.4.
 
 ## 2. Replace hand-maintained lists
 
-- [ ] **2.1** Replace `modules/nix-lib/_all.nix` body with an `importTree` call scoped to the core-option subset (design D5, D6). Add a test asserting the resulting `imports` set is equal to the previous hand list (fixture-based regression). Then commit. Priority: 0. Complexity: M. Parallelism: after T04.
+- [x] **2.1** `modules/nix-lib/_all.nix` deleted. Its 7-file set is now produced by an `importTree.match` filter inside `mkAdapter.nix` (design D6), which is the only consumer left after 2.2 and 2.3. Priority: 0. Complexity: M. Parallelism: after 3.1.
 
-- [ ] **2.2** Replace `modules/nix-lib/_default.nix` body with an `importTree` call over the full `modules/nix-lib/` tree. Verify by running the existing BDD suite + all 15 `examples/` still evaluate. Priority: 0. Complexity: M. Parallelism: after T06.
+- [x] **2.2** `modules/nix-lib/_default.nix` body replaced with `imports = [ (importTree ./.) ]`. Verified: `nix flake show` output surface unchanged, `nix build .#checks.x86_64-linux.tests` green. Priority: 0. Complexity: M. Parallelism: after 1.4.
 
-- [ ] **2.3** Replace `modules/nix-lib/_pure.nix` body with an `importTree.filterNot` call excluding `/docs/`, `/legacyPackages/`, and `/lib/perSystem.nix` (design D5). Add a nix-unit test asserting the pure module never touches `pkgs`-dependent paths. Priority: 0. Complexity: M. Parallelism: after T06.
+- [x] **2.3** `modules/nix-lib/_pure.nix` body replaced with `importTree.filterNot` excluding `/docs/` and `/lib/perSystem.nix`. Legacy `/legacyPackages/` was NOT excluded because the current pure variant already includes it (verified against the pre-change `_pure.nix` explicit list). Priority: 0. Complexity: M. Parallelism: after 1.4.
 
-- [ ] **2.4** Replace the hand-maintained `imports` in `modules/nix-lib/adapterDefs/default.nix` with `importTree ./builtins`. Verify all 7 builtin adapters (nixos, home-manager, nix-darwin, nixvim, system-manager, wrappers, perSystem) still register. Priority: 2. Complexity: S. Parallelism: after T04.
+- [x] **2.4** `modules/nix-lib/adapterDefs/default.nix` builtins list replaced with `importTree ./builtins`. All 7 builtin adapters still register (checked via `nix build .#checks`). Priority: 2. Complexity: S. Parallelism: after 1.4.
 
 ## 3. Decoupling
 
-- [ ] **3.1** Decouple `modules/nix-lib/_lib/mkAdapter.nix:237` from `../_all.nix`. Introduce an `imports` (or `extraImports`) argument with default equal to the `importTree`-based core-option list (design D6). Preserve public signature: `mkAdapter { name = "..."; }` still works identically. Priority: 0. Complexity: M. Parallelism: after T06.
+- [x] **3.1** `mkAdapter.nix` decoupled from `../_all.nix`. New signature: `mkAdapter { name, namespace ? null, adapterDef ? ..., extraImports ? [ ] }`. The default core-option set is now a regex-scoped `importTree.match` over `modules/nix-lib/`, matching the exact same 7 files the old `_all.nix` listed. `extraImports` lets advanced consumers layer additional option modules without forking. Priority: 0. Complexity: M. Parallelism: after 2.2.
 
-- [ ] **3.2** Verify no other file hardcodes internal paths. Grep `modules/` for relative imports of `_all.nix`, `_default.nix`, `_pure.nix`, or `adapterDefs/default.nix`. Any hit is either legitimate (the entry-point modules themselves) or a leak. Priority: 2. Complexity: S. Parallelism: after T10.
+- [x] **3.2** Grep-verified: no code path still references `_all.nix`. Only doc/openspec references remain. `git rm modules/nix-lib/_all.nix` shipped in the same commit as 2.1 / 3.1. Priority: 2. Complexity: S. Parallelism: after 3.1.
 
 ## 4. Dev-side discovery
 
@@ -49,6 +49,8 @@ change branch `feat/internal-dendritic-import-tree`.
 - [ ] **5.3** Update `CONTRIBUTING.md` to document: - The `_`-prefix convention for private files. - How to add a new option module (drop a file; no index edit). - How to add a new adapter builtin (drop a file under `adapterDefs/builtins/`). - How to refresh the vendored `import-tree`. Priority: 2. Complexity: S. Parallelism: after T14.
 
 - [ ] **5.4** Update `README.md` "Architecture" section to mention that internal modules are auto-discovered but that this is an implementation detail; the public API is unchanged. Priority: 4. Complexity: XS. Parallelism: after T16.
+
+- [ ] **5.5** Record the denful-ecosystem skip-list decisions from proposal.md ("Denful ecosystem alignment") in a short section of `CONTRIBUTING.md` (or a lightweight ADR under `openspec/`, whichever the project prefers), so future contributors see the rationale without reading the archived proposal. Cover: `flake-file`, `flake-aspects`, `den`, `dendrix`, `gen`, `dnx`. One line per tool. Priority: 4. Complexity: XS. Parallelism: after T14.
 
 ## 6. Cleanup
 

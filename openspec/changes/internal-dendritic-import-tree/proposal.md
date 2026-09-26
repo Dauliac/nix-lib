@@ -10,7 +10,7 @@ Companion research: `openspec/research/{import-tree.md, flake-parts-partitions.m
 Refactor nix-lib's internal module organization to use the `import-tree`
 dendritic pattern (already adopted successfully in nix-oci), while
 keeping `import-tree` invisible to downstream consumers. Achieve this
-by **vendoring** the single-file MIT-licensed `import-tree` into
+by **vendoring** the single-file Apache 2.0 licensed `import-tree` into
 `modules/nix-lib/_lib/import-tree/` and calling it only from internal
 modules.
 
@@ -56,7 +56,7 @@ The two mechanisms available in the research answer this cleanly:
   `import-tree` into a partition-side input for the parts of nix-lib
   that shape `flakeModules.default`, `flakeModules.pure`, or
   `<system>Modules.default`.
-- **Vendoring** import-tree (MIT, single 268-line file, zero inputs,
+- **Vendoring** import-tree (Apache 2.0, single 268-line file, zero inputs,
   uses only `builtins.*`) sidesteps both concerns. The tree walk runs
   against nix-lib's own store path; no consumer-visible input is
   introduced (`research/import-tree.md` section on runtime input
@@ -67,7 +67,7 @@ but not required.
 
 ## What changes
 
-1. Vendor `import-tree/default.nix` (MIT) as
+1. Vendor `import-tree/default.nix` (Apache 2.0) as
    `modules/nix-lib/_lib/import-tree/default.nix`, keeping LICENSE
    attribution intact.
 2. Wire the vendored copy through `modules/nix-lib/_lib/default.nix`
@@ -121,11 +121,40 @@ but not required.
 - Do **not** refactor `flake-parts` partitions setup. Existing dev
   partition stays as it is (see `modules/partitions.nix`).
 
+### Denful ecosystem alignment (why only `import-tree`)
+
+The `denful.dev` umbrella lists several tools beyond `import-tree`.
+This proposal explicitly picks up only `import-tree`. Rationale per
+tool, so future maintainers do not relitigate:
+
+- `flake-file` (generate `flake.nix` from typed modules). **Skip.**
+  nix-lib has exactly two stable inputs. Introducing a generator to
+  manage two lines of `inputs = { ... }` is overhead without payoff.
+- `flake-aspects` (zero-dep aspect composition with parametric
+  `<providers>`). **Skip.** Aimed at end-user configurations that
+  compose across hosts/users/modules, not at composable libraries.
+  nix-lib's consumers may adopt it; nix-lib itself should not
+  depend on it.
+- `den` (context-aware host/user schemas). **Skip.** Same reason:
+  targets end-configs, not libraries.
+- `dendrix` (community aspect distribution). **Skip.** Consumer-side
+  artifact; nothing to do at the library layer.
+- `gen` (pure Nix primitives, algebra, scope graphs). **Skip.**
+  Overkill for the current module composition needs.
+- `dnx` (high-performance Nix runtime, WIP). **Skip.** Not applicable
+  to a `pkgs`-agnostic library layer.
+
+If any of the above becomes relevant later, it gets its own OpenSpec
+change with its own justification. This change is bounded to the
+`import-tree` slice.
+
 ## Risks
 
-1. **License compliance for vendored code.** import-tree is MIT.
-   Preserving the LICENSE header at the top of the vendored file and
-   listing the upstream in a NOTICE (or the README) is required.
+1. **License compliance for vendored code.** import-tree is Apache 2.0.
+   The full upstream LICENSE is preserved at
+   `modules/nix-lib/_lib/import-tree/LICENSE`. Each vendored file
+   carries a header pointing at that LICENSE. `README.md` and
+   `CONTRIBUTING.md` both call out the vendored copy and its origin.
 2. **Silent upstream divergence.** Because we vendor rather than pin,
    we won't get upstream bug fixes automatically. Mitigation: add a
    comment at the top of the vendored file with the upstream commit
