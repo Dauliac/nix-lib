@@ -3,7 +3,7 @@
 Change ID: `internal-dendritic-import-tree`
 Status: draft
 Date: 2026-09-26
-Companion research: `openspec/research/{import-tree.md, flake-parts-partitions.md, nix-oci-audit.md, nix-lib-current.md}`
+Companion research: `openspec/research/{import-tree.md, flake-parts-partitions.md, nix-oci-audit.md, nix-lib-current.md, denful-flake-file.md, denful-den-diagram.md, denful-checkmate.md}`
 
 ## Summary
 
@@ -125,11 +125,16 @@ but not required.
 
 The `denful.dev` umbrella lists several tools beyond `import-tree`.
 This proposal explicitly picks up only `import-tree`. Rationale per
-tool, so future maintainers do not relitigate:
+tool, so future maintainers do not relitigate. Companion research per
+tool lives under `openspec/research/denful-*.md` where noted.
 
 - `flake-file` (generate `flake.nix` from typed modules). **Skip.**
-  nix-lib has exactly two stable inputs. Introducing a generator to
-  manage two lines of `inputs = { ... }` is overhead without payoff.
+  See `openspec/research/denful-flake-file.md`. Value shows up around
+  6+ inputs with heavy `follows` plumbing; nix-lib has 2 inputs and 1
+  `follows`. Also, the current `outputs` merge (`... // { lib = ... }`)
+  cannot be expressed through `flake-file`'s keyword-based `outputs`
+  option without a verbatim string escape hatch that defeats the
+  point. Revisit if input count grows past ~6.
 - `flake-aspects` (zero-dep aspect composition with parametric
   `<providers>`). **Skip.** Aimed at end-user configurations that
   compose across hosts/users/modules, not at composable libraries.
@@ -137,6 +142,27 @@ tool, so future maintainers do not relitigate:
   depend on it.
 - `den` (context-aware host/user schemas). **Skip.** Same reason:
   targets end-configs, not libraries.
+- `den-diagram` (aspect-graph visualization for `den`). **Skip.** See
+  `openspec/research/denful-den-diagram.md`. The tool consumes `den`
+  capture-trace IR (fields: `provider`, `excluded/replacedBy`,
+  `handlers`, `entityKind`); it does not understand flake-parts
+  vocabulary (`imports/options/config/perSystem`). Fed nix-lib's
+  modules directly, `graph.ofNamespace` would return zero nodes.
+  Adoption would require either migrating to `den` outright or
+  hand-writing a flake-parts to den-IR adapter roughly the size of
+  just emitting Mermaid directly. If a module-graph diagram is later
+  desirable, prefer a small custom emitter over adopting den-diagram.
+- `checkmate` (nix-unit + treefmt wrapper via `--override-input
+  target`). **Skip.** See `openspec/research/denful-checkmate.md`. It
+  wraps exactly two of the seven check backends already wired in
+  `modules/_dev/module.nix` (`nix-unit` and `treefmt-nix`); adopting
+  it would add ~7 transitive inputs and stand up a second competing
+  `checks.<system>` aggregation outside our flake. **Useful residue,
+  external-only:** downstream consumers can run
+  `nix flake check github:denful/checkmate --override-input target
+  github:Dauliac/nix-lib` as a zero-config quick-check without
+  installing nix-lib's dev partition. Document as a downstream tip in
+  README; do not depend on it internally.
 - `dendrix` (community aspect distribution). **Skip.** Consumer-side
   artifact; nothing to do at the library layer.
 - `gen` (pure Nix primitives, algebra, scope graphs). **Skip.**

@@ -50,7 +50,9 @@ change branch `feat/internal-dendritic-import-tree`.
 
 - [x] **5.4** `README.md` "Third-party components" section calls out the vendored copy with license and refresh pointer. The main "Lib Modules Architecture" diagram intentionally does NOT mention auto-discovery: the discovery mechanism is an internal implementation detail and the diagram documents public-consumer flow.
 
-- [ ] **5.5** Record the denful-ecosystem skip-list decisions from proposal.md ("Denful ecosystem alignment") in a short section of `CONTRIBUTING.md` (or a lightweight ADR under `openspec/`, whichever the project prefers), so future contributors see the rationale without reading the archived proposal. Cover: `flake-file`, `flake-aspects`, `den`, `dendrix`, `gen`, `dnx`. One line per tool. Priority: 4. Complexity: XS. Parallelism: after T14.
+- [ ] **5.5** Record the denful-ecosystem skip-list decisions from proposal.md ("Denful ecosystem alignment") in a short section of `CONTRIBUTING.md` (or a lightweight ADR under `openspec/`, whichever the project prefers), so future contributors see the rationale without reading the archived proposal. Cover: `flake-file`, `flake-aspects`, `den`, `den-diagram`, `checkmate`, `dendrix`, `gen`, `dnx`. One line per tool. Link out to `openspec/research/denful-*.md` for the three with full research files. Priority: 4. Complexity: XS. Parallelism: after 5.3.
+
+- [ ] **5.6** Add a "Downstream quick-check (no dev partition needed)" tip to `README.md` documenting the external `checkmate` invocation: `nix flake check github:denful/checkmate --override-input target github:Dauliac/nix-lib`. Zero code changes to nix-lib. Frame as a convenience for consumers who want a fast nix-unit + treefmt sanity pass without cloning our full 7-backend dev setup. Reference `openspec/research/denful-checkmate.md`. Priority: 4. Complexity: XS. Parallelism: after 5.4.
 
 ## 6. Cleanup
 
