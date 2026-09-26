@@ -916,3 +916,24 @@ as a flake input, and does NOT add any entry to a consumer's
 `modules/nix-lib/_lib/import-tree/LICENSE`. To refresh the vendored
 copy, see the header comment in
 `modules/nix-lib/_lib/import-tree/default.nix`.
+
+## Downstream quick-check (no clone needed)
+
+For a fast sanity pass against a nix-lib-based flake without cloning
+the full 7-backend dev partition, invoke the external
+[`denful/checkmate`](https://github.com/denful/checkmate) wrapper with
+`--override-input target` pointing at your fork:
+
+```bash
+nix flake check github:denful/checkmate \
+  --override-input target github:Dauliac/nix-lib
+```
+
+`checkmate` runs `nix-unit` and `treefmt` on the target flake. It is
+NOT a nix-lib dependency: it is a purely downstream convenience
+shipped by the same author as `import-tree`. Nothing about invoking
+it requires changes to nix-lib itself. The two backends it exercises
+(`nix-unit`, `treefmt`) are already among the seven that
+`nix build .#checks.x86_64-linux.tests` runs locally when the dev
+partition is available. Full audit of the wrapper at
+`openspec/research/denful-checkmate.md`.

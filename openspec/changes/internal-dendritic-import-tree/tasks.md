@@ -50,9 +50,9 @@ change branch `feat/internal-dendritic-import-tree`.
 
 - [x] **5.4** `README.md` "Third-party components" section calls out the vendored copy with license and refresh pointer. The main "Lib Modules Architecture" diagram intentionally does NOT mention auto-discovery: the discovery mechanism is an internal implementation detail and the diagram documents public-consumer flow.
 
-- [ ] **5.5** Record the denful-ecosystem skip-list decisions from proposal.md ("Denful ecosystem alignment") in a short section of `CONTRIBUTING.md` (or a lightweight ADR under `openspec/`, whichever the project prefers), so future contributors see the rationale without reading the archived proposal. Cover: `flake-file`, `flake-aspects`, `den`, `den-diagram`, `checkmate`, `dendrix`, `gen`, `dnx`. One line per tool. Link out to `openspec/research/denful-*.md` for the three with full research files. Priority: 4. Complexity: XS. Parallelism: after 5.3.
+- [x] **5.5** Denful ecosystem skip-list added to `CONTRIBUTING.md` under "Denful ecosystem skip-list" (one line per tool: `flake-file`, `flake-aspects`, `den`, `den-diagram`, `checkmate`, `dendrix`, `gen`, `dnx`), each linking out to its `openspec/research/denful-*.md` audit where one exists. Contributors see the "why not" without archaeology.
 
-- [ ] **5.6** Add a "Downstream quick-check (no dev partition needed)" tip to `README.md` documenting the external `checkmate` invocation: `nix flake check github:denful/checkmate --override-input target github:Dauliac/nix-lib`. Zero code changes to nix-lib. Frame as a convenience for consumers who want a fast nix-unit + treefmt sanity pass without cloning our full 7-backend dev setup. Reference `openspec/research/denful-checkmate.md`. Priority: 4. Complexity: XS. Parallelism: after 5.4.
+- [x] **5.6** "Downstream quick-check (no clone needed)" section added to `README.md`. Documents the external `checkmate` invocation as a downstream convenience with the exact command line, plus a callout that this is NOT a nix-lib dependency: the same two backends it wraps (`nix-unit`, `treefmt`) are already among the seven our dev partition runs. Links to `openspec/research/denful-checkmate.md`.
 
 ## 6. Cleanup
 

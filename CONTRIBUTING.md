@@ -89,6 +89,33 @@ The full upstream LICENSE lives at
 `modules/nix-lib/_lib/import-tree/LICENSE`. Keep it in sync with the
 pinned commit if the upstream license ever changes.
 
+### Denful ecosystem skip-list
+
+`import-tree` is the only tool from the `denful.dev` ecosystem that
+nix-lib depends on. Other tools from the same author have been
+evaluated and intentionally not adopted. Full research per tool lives
+under `openspec/research/denful-*.md`; the summary below exists so
+future contributors do not relitigate.
+
+- `flake-file`: skip. Value shows up around 6+ inputs with heavy
+  `follows` plumbing; nix-lib has 2 inputs. See
+  `openspec/research/denful-flake-file.md`.
+- `flake-aspects`: skip. Aimed at end-user configurations, not at
+  composable libraries. Consumers may adopt it; nix-lib itself
+  should not depend on it.
+- `den`: skip. Same reason as `flake-aspects`: targets end-configs.
+- `den-diagram`: skip. Consumes `den` capture-trace IR, not
+  flake-parts. See `openspec/research/denful-den-diagram.md`.
+- `checkmate`: skip as a dependency, but see `README.md` for how
+  to invoke it externally as a fast downstream sanity pass. Full
+  audit at `openspec/research/denful-checkmate.md`.
+- `dendrix`: skip. Consumer-side artifact.
+- `gen`: skip. Overkill for the current module composition needs.
+- `dnx`: skip. Not applicable to a pkgs-agnostic library layer.
+
+Revisit any of these only when the concrete boundary each research
+file names is actually crossed.
+
 ## Adding a New Adapter
 
 1. Add the adapter name to `namespaces` in `modules/nix-lib/_lib/mkAdapter.nix`
