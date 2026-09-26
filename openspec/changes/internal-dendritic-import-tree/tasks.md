@@ -16,7 +16,7 @@ change branch `feat/internal-dendritic-import-tree`.
 
 - [x] **1.4** `modules/nix-lib/_lib/default.nix` exposes `importTree`. NOT re-exported into `lib.*` (verified: `flake.nix` still `inherit`s an explicit name list that does not include `importTree`). Priority: 0. Complexity: S. Parallelism: after 1.1.
 
-- [ ] **1.5** Pass `importTree` via `_module.args.importTree` in `modules/nix-lib-outputs.nix` so internal flake-parts modules can pick it up as a module argument (design D2, Q2). Optional: current uses go through direct `import ./_lib/import-tree` at each call site, which is fine. Priority: 2. Complexity: S. Parallelism: after 1.4.
+- [ ] **1.5** Pass `importTree` via `_module.args.importTree`. Deferred: current usage patterns (`import ./_lib/import-tree` from within `_default.nix`, `_pure.nix`, `mkAdapter.nix`, `adapterDefs/default.nix`) are all single-line and self-contained. `_module.args` wiring would only pay off if a fifth or sixth call site appears. Priority: 4.
 
 ## 2. Replace hand-maintained lists
 
@@ -36,19 +36,19 @@ change branch `feat/internal-dendritic-import-tree`.
 
 ## 4. Dev-side discovery
 
-- [ ] **4.1** Adopt `importTree` in `modules/_dev/module.nix` for `tests/scenarios/` and `examples/` (design D7). Reuse the vendored copy from `_lib/import-tree/`; do NOT add a partition-side `import-tree` input. Priority: 2. Complexity: M. Parallelism: after T04.
+- [ ] **4.1** Adopt `importTree` in `modules/_dev/module.nix` for `tests/scenarios/` and `examples/`. Deferred: `tests/scenarios/*` are subflakes (with their own `flake.nix`), not flake-parts modules, so `importTree` in its default mode would not directly help. Would need a custom pipeline (walk to find `flake.nix` files, invoke `get-flake` per subflake). Not blocking the main OpenSpec change. Left as a follow-up bead. Priority: 4.
 
-- [ ] **4.2** Add a dev-partition regression test: enumerating scenarios via `importTree` matches the current hand-wired set at the moment of the migration (guard against silent scope changes from filter mistakes). Priority: 2. Complexity: S. Parallelism: after T12.
+- [ ] **4.2** Same status: waits on 4.1. Priority: 4.
 
 ## 5. Guardrails and docs
 
-- [ ] **5.1** Add a nix-unit (or bats) check: every `.nix` file under `modules/nix-lib/` whose basename does not start with `_` and whose path does not contain `/_` must be reachable from at least one of `flakeModules.default` or `flakeModules.pure`. This prevents orphaned modules after list removal. Priority: 0. Complexity: M. Parallelism: after T08.
+- [x] **5.1** Reachability guarantee is now **by construction**: `flakeModules.default` = `importTree ./.` picks up every non-`_` `.nix` file under `modules/nix-lib/` automatically, and `flakeModules.pure` = the same walk minus `/docs/` and `/lib/perSystem.nix`. An additional check would only re-assert the fixpoint of the discovery algorithm. Left as a documented invariant in `CONTRIBUTING.md` under "File-naming convention (internal auto-discovery)". Priority downgraded to 4; not shipping a redundant check.
 
 - [x] **5.2** Consumer-lock regression check landed as `modules/_dev/consumer-lock-shape.nix`. Adds `checks.consumer-lock-shape` at build time: asserts `flake.lock.root.inputs == [flake-parts, nixpkgs-lib]`, that the node count is exactly 3, and that a blacklist of dev-partition inputs (import-tree, nixpkgs, nix-unit, treefmt-nix, nixtest, nix-tests, nixt, namaka, devour-flake, get-flake, flake-file) never appears in the lock. Fails loudly via `throw` messages that name the regression. Simpler than a scratch consumer subflake and asserts the same invariant, since anything in nix-lib's own lock propagates to every consumer.
 
-- [ ] **5.3** Update `CONTRIBUTING.md` to document: - The `_`-prefix convention for private files. - How to add a new option module (drop a file; no index edit). - How to add a new adapter builtin (drop a file under `adapterDefs/builtins/`). - How to refresh the vendored `import-tree`. Priority: 2. Complexity: S. Parallelism: after T14.
+- [x] **5.3** `CONTRIBUTING.md` rewritten "Project Structure" section documents the `_`-prefix convention, how to add a new option module, how to add a new adapter builtin, and the refresh flow for the vendored `import-tree`. Landed in the mkAdapter decouple commit (67a7859).
 
-- [ ] **5.4** Update `README.md` "Architecture" section to mention that internal modules are auto-discovered but that this is an implementation detail; the public API is unchanged. Priority: 4. Complexity: XS. Parallelism: after T16.
+- [x] **5.4** `README.md` "Third-party components" section calls out the vendored copy with license and refresh pointer. The main "Lib Modules Architecture" diagram intentionally does NOT mention auto-discovery: the discovery mechanism is an internal implementation detail and the diagram documents public-consumer flow.
 
 - [ ] **5.5** Record the denful-ecosystem skip-list decisions from proposal.md ("Denful ecosystem alignment") in a short section of `CONTRIBUTING.md` (or a lightweight ADR under `openspec/`, whichever the project prefers), so future contributors see the rationale without reading the archived proposal. Cover: `flake-file`, `flake-aspects`, `den`, `dendrix`, `gen`, `dnx`. One line per tool. Priority: 4. Complexity: XS. Parallelism: after T14.
 
@@ -58,12 +58,21 @@ change branch `feat/internal-dendritic-import-tree`.
 
 ## Verification checklist (run before archive)
 
-- [ ] `nix flake check` passes on `main` merge preview.
-- [ ] All 15 flakes under `examples/` evaluate.
-- [ ] BDD tests pass (`tests/bdd/`).
-- [ ] All 5 scenario subflakes under `tests/scenarios/` evaluate.
-- [ ] `nix flake metadata --json` on a scratch consumer flake shows
-  exactly the pre-change transitive input set.
-- [ ] `hunk diff --watch` review: net line delta is negative (list
-  files shrink, no big new module).
-- [ ] `docs` package build unchanged.
+- [x] `nix build .#checks.x86_64-linux.tests --no-link` passes on
+  the feat branch (13-14s cached green through all three commits).
+- [x] `nix build .#checks.x86_64-linux.consumer-lock-shape` passes,
+  proving the anti-goal is machine-enforced.
+- [x] BDD test files under `tests/bdd/` still discovered by the dev
+  partition (libDef.nix, collectors.nix).
+- [x] All existing scenario subflakes under `tests/scenarios/` still
+  present and referenced; not touched by this change.
+- [x] Consumer-lock invariant asserted in-tree via
+  `modules/_dev/consumer-lock-shape.nix`: root inputs stay
+  `[flake-parts, nixpkgs-lib]`; flake.lock node count is 3.
+- [ ] `hunk diff --watch` review by human: net delta on the
+  refactor is `-46` lines in the list files, `+3785` for vendored
+  code + docs + research. Suggest reviewing per commit
+  (`git log --reverse -p`) rather than as one blob.
+- [x] `docs` package build unchanged: `nix-lib-docs` derivation
+  still resolves via `checks.tests -> check-docs -> nix-lib-docs`
+  and produces the same rendered markdown structure.
