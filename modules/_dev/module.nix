@@ -40,6 +40,9 @@
 
     # Scenario tests (mkFlake, mkLib, backend format)
     ./scenario-checks.nix
+
+    # Consumer-lock shape regression (asserts on ../../flake.lock)
+    ./consumer-lock-shape.nix
   ];
 
   perSystem =
