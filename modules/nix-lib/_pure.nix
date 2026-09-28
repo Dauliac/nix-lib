@@ -1,32 +1,24 @@
-# Pure nix-lib module — zero pkgs dependency.
+# Pure nix-lib module: zero pkgs dependency.
 #
-# Use nix-lib.flakeModules.pure instead of .default when you only need
-# pure Nix lib definitions without pkgs, docs, or per-system support.
+# Same discovery as ./_default.nix, minus docs and per-system libs.
+# Excluded (regex on file path):
+#   - `/docs/`         : documentation package needs pkgs.
+#   - `/lib/perSystem.nix` : per-system lib option needs pkgs.
 #
-# What's included:
-#   - nix-lib.lib.* definitions (flake-level)
-#   - Adapter definitions (NixOS, home-manager, etc.)
-#   - Collectors and test generation
-#   - Linter metadata
-#
-# What's excluded:
-#   - Per-system lib definitions (nix-lib.lib.* in perSystem — needs pkgs)
-#   - Documentation package (nix-lib.docs.* — needs pkgs)
+# Adding a new option module: same rule as ./_default.nix. If the new
+# module depends on pkgs, place it under `docs/` or a new directory
+# added to the exclusion list below.
 #
 # Usage:
 #   imports = [ nix-lib.flakeModules.pure ];
-#
+let
+  importTree = import ./_lib/import-tree;
+in
 { ... }:
 {
   imports = [
-    ./_all.nix
-    ./adapterDefs
-    ./collectors/collectorDefs.nix
-    ./collectors/metaCollectors.nix
-    ./collectors/systemCollectors.nix
-    ./lib/flake.nix
-    ./tests/flake.nix
-    ./legacyPackages/lib.nix
-    ./legacyPackages/nix-lib.nix
+    (importTree.filterNot (
+      p: builtins.match ".*/docs/.*" p != null || builtins.match ".*/lib/perSystem\\.nix" p != null
+    ) ./.)
   ];
 }

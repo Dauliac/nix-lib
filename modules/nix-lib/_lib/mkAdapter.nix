@@ -29,6 +29,16 @@
 #
 { lib }:
 let
+  importTree = import ./import-tree;
+
+  # Core option modules every adapter needs: enable, namespace,
+  # coverage, testing/{backend,reporter,outputPath}, lib/internal.
+  # Selected by regex over the relative path so a new core-option
+  # .nix file dropped under one of those buckets is picked up
+  # automatically. Matches exactly the set that ../_all.nix used to
+  # hand-maintain.
+  coreOptionModules = (importTree.match ".*/(enable|namespace|coverage|testing/(backend|reporter|outputPath)|lib/internal)\\.nix") ../.;
+
   libDefTypeModule = import ./libDefType.nix { inherit lib; };
   inherit (libDefTypeModule) flattenLibs libDefsToMeta extractFnsFlat;
 
@@ -121,6 +131,11 @@ in
   name,
   namespace ? null,
   adapterDef ? defaultAdapterDefs.${name} or { },
+  # Extra flake-parts modules to merge alongside the core option
+  # modules. Consumers who need custom option modules (e.g. a
+  # bespoke adapter for a private module system) can pass them here
+  # without forking mkAdapter.
+  extraImports ? [ ],
 }:
 let
   # Resolve adapter configuration
@@ -234,7 +249,7 @@ let
 
 in
 {
-  imports = [ ../_all.nix ];
+  imports = [ coreOptionModules ] ++ extraImports;
 
   options = {
     # Define options.nix-lib.lib for lib definitions

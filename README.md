@@ -904,3 +904,36 @@ If you used `follows` for any of these, remove them.
 - `tests/scenarios/` - Backend compatibility test subflakes (nix-unit, nix-tests, standalone, mkFlake)
 - `tests/bdd/` - BDD tests for structure validation
 - `CONTRIBUTING.md` - Development and testing guide
+
+## Third-party components
+
+`nix-lib` vendors [`import-tree`](https://github.com/denful/import-tree)
+under Apache License 2.0 at `modules/nix-lib/_lib/import-tree/`. It is
+used internally to auto-discover option modules under
+`modules/nix-lib/`. It is NOT re-exported from `lib.*`, does NOT appear
+as a flake input, and does NOT add any entry to a consumer's
+`flake.lock`. The full upstream license is preserved at
+`modules/nix-lib/_lib/import-tree/LICENSE`. To refresh the vendored
+copy, see the header comment in
+`modules/nix-lib/_lib/import-tree/default.nix`.
+
+## Downstream quick-check (no clone needed)
+
+For a fast sanity pass against a nix-lib-based flake without cloning
+the full 7-backend dev partition, invoke the external
+[`denful/checkmate`](https://github.com/denful/checkmate) wrapper with
+`--override-input target` pointing at your fork:
+
+```bash
+nix flake check github:denful/checkmate \
+  --override-input target github:Dauliac/nix-lib
+```
+
+`checkmate` runs `nix-unit` and `treefmt` on the target flake. It is
+NOT a nix-lib dependency: it is a purely downstream convenience
+shipped by the same author as `import-tree`. Nothing about invoking
+it requires changes to nix-lib itself. The two backends it exercises
+(`nix-unit`, `treefmt`) are already among the seven that
+`nix build .#checks.x86_64-linux.tests` runs locally when the dev
+partition is available. Full audit of the wrapper at
+`openspec/research/denful-checkmate.md`.

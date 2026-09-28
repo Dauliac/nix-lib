@@ -23,18 +23,14 @@
 #
 { lib, ... }:
 let
+  importTree = import ../_lib/import-tree;
   adapterDefType = import ./_types/adapterDefType.nix { inherit lib; };
 in
 {
-  imports = [
-    ./builtins/nixos.nix
-    ./builtins/home-manager.nix
-    ./builtins/nix-darwin.nix
-    ./builtins/nixvim.nix
-    ./builtins/system-manager.nix
-    ./builtins/wrappers.nix
-    ./builtins/perSystem.nix
-  ];
+  # Builtin adapters (nixos, home-manager, nix-darwin, nixvim,
+  # system-manager, wrappers, perSystem) are auto-discovered from
+  # ./builtins/. Add a new one by dropping a .nix file there.
+  imports = [ (importTree ./builtins) ];
 
   options.nix-lib.adapterDefs = lib.mkOption {
     type = lib.types.attrsOf adapterDefType;

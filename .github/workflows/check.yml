@@ -1,0 +1,60 @@
+name: check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # One matrix job per flake check derivation. Failure of any single
+  # check surfaces as its own red X on the PR, so reviewers see which
+  # invariant broke without digging into a rolled-up log.
+  #
+  # Matrix targets map 1:1 to `nix flake show`'s
+  # checks.x86_64-linux.* keys:
+  #
+  #   tests               - E2E suite: 6 test backends + docs build.
+  #   treefmt             - Format check (nixfmt via treefmt-nix).
+  #   consumer-lock-shape - Anti-goal enforcement for the OpenSpec
+  #                         change internal-dendritic-import-tree:
+  #                         asserts flake.lock never gains an input
+  #                         beyond flake-parts and nixpkgs-lib.
+  check:
+    name: check.${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - tests
+          - treefmt
+          - consumer-lock-shape
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            accept-flake-config = true
+
+      - name: Magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build check ${{ matrix.target }}
+        run: |
+          nix build \
+            .#checks.x86_64-linux.${{ matrix.target }} \
+            --print-build-logs \
+            --no-link

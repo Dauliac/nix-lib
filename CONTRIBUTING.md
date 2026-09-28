@@ -28,19 +28,93 @@ nix run .#build-all
 
 ```
 nix-lib/
-├── modules/           # Core nix-lib modules
-│   ├── nix-lib/       # Main module implementation
-│   │   ├── _lib/      # Internal library (mkAdapter, types)
-│   │   └── _all.nix   # Common options
+├── modules/                 # Core nix-lib modules
+│   ├── nix-lib/             # Main module implementation
+│   │   ├── _lib/            # Internal library (mkAdapter, types, vendored import-tree)
+│   │   ├── _default.nix     # Full API entry point (auto-discovered)
+│   │   ├── _pure.nix        # Pure API entry point (no pkgs)
+│   │   ├── enable.nix       # Core options...
+│   │   ├── namespace.nix
+│   │   ├── coverage.nix
+│   │   ├── testing/         # Auto-discovered
+│   │   ├── lib/             # Auto-discovered
+│   │   ├── adapterDefs/     # Adapter definitions (builtins/ auto-discovered)
+│   │   ├── collectors/      # Auto-discovered
+│   │   ├── docs/            # Auto-discovered
+│   │   └── legacyPackages/  # Auto-discovered
 │   └── nix-lib-outputs.nix  # Flake outputs (adapters)
-├── examples/          # Example configurations
-│   ├── flake-parts.nix
-│   ├── nixos.nix
-│   ├── home-manager.nix
-│   └── ...
-└── tests/             # Integration tests
-    └── flake.nix
+├── examples/                # Example configurations
+├── tests/                   # Integration tests
+└── openspec/                # Design docs and change proposals
 ```
+
+### File-naming convention (internal auto-discovery)
+
+`modules/nix-lib/_default.nix` and `modules/nix-lib/_pure.nix` walk
+`modules/nix-lib/` via the vendored `import-tree` at
+`modules/nix-lib/_lib/import-tree/`. Discovery follows two rules:
+
+1. Any `.nix` file whose path contains `/_` (a directory or file
+   whose basename starts with `_`) is **skipped**. This is how
+   private helpers (`_lib/`, `_types/`, `_factory.nix`,
+   `_markdown.nix`) stay out of the flake-parts import set.
+2. Every other `.nix` file becomes a live flake-parts module.
+
+Adding a new option module: drop a `.nix` file anywhere under
+`modules/nix-lib/` whose name and path do not use the `_` prefix. It
+will be picked up on the next eval. No index file needs editing.
+
+Adding a new adapter builtin: drop a `.nix` file under
+`modules/nix-lib/adapterDefs/builtins/`. `adapterDefs/default.nix`
+walks that directory via `import-tree`.
+
+### Refreshing the vendored `import-tree`
+
+The upstream is `github:denful/import-tree`
+(Apache License 2.0). To refresh:
+
+```bash
+COMMIT=<sha>
+curl -sSL \
+  "https://raw.githubusercontent.com/denful/import-tree/$COMMIT/default.nix" \
+  > modules/nix-lib/_lib/import-tree/default.nix
+curl -sSL \
+  "https://raw.githubusercontent.com/denful/import-tree/$COMMIT/tests.nix" \
+  > modules/nix-lib/_lib/import-tree/tests.nix
+# Re-prepend the attribution header on each file. Update the pinned
+# commit hash in the header. Then run `nix flake check`.
+```
+
+The full upstream LICENSE lives at
+`modules/nix-lib/_lib/import-tree/LICENSE`. Keep it in sync with the
+pinned commit if the upstream license ever changes.
+
+### Denful ecosystem skip-list
+
+`import-tree` is the only tool from the `denful.dev` ecosystem that
+nix-lib depends on. Other tools from the same author have been
+evaluated and intentionally not adopted. Full research per tool lives
+under `openspec/research/denful-*.md`; the summary below exists so
+future contributors do not relitigate.
+
+- `flake-file`: skip. Value shows up around 6+ inputs with heavy
+  `follows` plumbing; nix-lib has 2 inputs. See
+  `openspec/research/denful-flake-file.md`.
+- `flake-aspects`: skip. Aimed at end-user configurations, not at
+  composable libraries. Consumers may adopt it; nix-lib itself
+  should not depend on it.
+- `den`: skip. Same reason as `flake-aspects`: targets end-configs.
+- `den-diagram`: skip. Consumes `den` capture-trace IR, not
+  flake-parts. See `openspec/research/denful-den-diagram.md`.
+- `checkmate`: skip as a dependency, but see `README.md` for how
+  to invoke it externally as a fast downstream sanity pass. Full
+  audit at `openspec/research/denful-checkmate.md`.
+- `dendrix`: skip. Consumer-side artifact.
+- `gen`: skip. Overkill for the current module composition needs.
+- `dnx`: skip. Not applicable to a pkgs-agnostic library layer.
+
+Revisit any of these only when the concrete boundary each research
+file names is actually crossed.
 
 ## Adding a New Adapter
 
