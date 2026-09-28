@@ -37,6 +37,7 @@
     # BDD tests
     ../../tests/bdd/libDef.nix
     ../../tests/bdd/collectors.nix
+    ../../tests/bdd/cross-class-modules.nix
 
     # Scenario tests (mkFlake, mkLib, backend format)
     ./scenario-checks.nix

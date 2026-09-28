@@ -412,6 +412,49 @@ Import the adapter for your module system. Libs are automatically available at `
 | `systemManagerModules.default` | `nix-lib.systemManagerModules.default` |
 | `wrapperModules.default` | `nix-lib.wrapperModules.default` |
 
+## Cross-class module registration
+
+`flake.crossClassModules` lets a single file register the same module body against multiple `flake.modules.<class>` keys, as pure data. Each contribution states which classes it applies to, the module body, and optionally the names of other entries whose class-cells to compose in. The aggregator derives `flake.modules.<class>.<name>` for every declared class.
+
+Symmetric (same body, three classes):
+
+```nix
+{ ... }:
+{
+  flake.crossClassModules.foo = {
+    classes = [ "nixos" "homeManager" "systemManager" ];
+    module  = { lib, ... }: { options.foo = lib.mkEnableOption "foo"; };
+  };
+}
+```
+
+Asymmetric (nixos + systemManager only, HM absent, expressed as data):
+
+```nix
+{ ... }:
+{
+  flake.crossClassModules.bar = {
+    classes = [ "nixos" "systemManager" ];
+    module  = { lib, ... }: { options.bar = lib.mkEnableOption "bar"; };
+  };
+}
+```
+
+Compose across entries with a per-class filter (`includes = [ "foo" "bar" ]` unconditionally; on the `homeManager` class-cell the aggregator drops `bar` because `bar.classes` does not include HM):
+
+```nix
+{ ... }:
+{
+  flake.crossClassModules.composer = {
+    classes  = [ "nixos" "homeManager" "systemManager" ];
+    includes = [ "foo" "bar" ];
+    module   = { pkgs, ... }: { _module.args.x = ...; };
+  };
+}
+```
+
+Design notes and decision record: `openspec/changes/cross-class-modules-primitive/design.md`.
+
 ## Test Formats
 
 ### Simple expected value
