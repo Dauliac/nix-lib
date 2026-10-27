@@ -230,8 +230,17 @@ let
     in
     collectedNested;
 
-  # Nested libs
-  nestedLibs = if cfg.enable then extractNestedLibs else { };
+  # Nested libs. Guarded by scanNestedSystems because the extraction has to
+  # read the nested sub-system's `config.<path>.nix-lib.fns`, which forces
+  # evaluation of its entire submodule. If that submodule's own type schema
+  # references the parent `config.lib` (e.g. home-manager + nixvim: nixvim's
+  # submodule exposes `lib` as a module arg sourced from the outer config.lib),
+  # evaluating it to read `nix-lib.fns` triggers infinite recursion because
+  # `config.lib` is defined below in terms of this same `nestedLibs`.
+  # Downstream can set `nix-lib.scanNestedSystems = false` on the affected
+  # adapter to break the cycle at the cost of losing `config.lib.<nested>.*`
+  # surface for that eval.
+  nestedLibs = if cfg.enable && cfg.scanNestedSystems then extractNestedLibs else { };
 
   # Own libs from nix-lib.fns (resolved, after potential overrides)
   ownLibs = if cfg.enable then buildVisibleFnsStructure config.nix-lib.fns else { };
@@ -301,6 +310,29 @@ in
       default = { };
       internal = true;
       description = "Nested module libs for collector aggregation";
+    };
+
+    # Opt-out knob for nested-system scanning. Default true preserves the
+    # existing behaviour (crossing into e.g. programs.nixvim.nix-lib.fns and
+    # surfacing it under config.lib.<nested-name>.*). Setting this to false
+    # skips the extraction entirely, which is required when the nested
+    # sub-system's own module eval depends on the parent `config.lib`
+    # (home-manager + nixvim is the canonical case: nixvim's submodule
+    # exposes a `lib` arg sourced from the outer config.lib, so reading
+    # programs.nixvim.nix-lib.fns forces nixvim eval, which forces
+    # config.lib, which forces nestedLibs, infinite recursion).
+    nix-lib.scanNestedSystems = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Whether to scan nested module systems (e.g. nixvim inside
+        home-manager) for `nix-lib.fns` and merge them into
+        `config.lib.<nested-name>.*`.
+
+        Disable when the nested system's module eval depends on the
+        parent `config.lib` to avoid infinite recursion. Known trigger:
+        home-manager + nixvim.
+      '';
     };
   }
   // lib.optionalAttrs (!resolvedDef.hasBuiltinLib) {
